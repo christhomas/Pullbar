@@ -36,6 +36,8 @@ see the counts for all six sections.
 
 ## Requirements
 
+- A Mac with Apple Silicon (M1 or later). Intel Macs are not supported: the
+  release app is built for `arm64` only.
 - macOS 13 Ventura or later
 - Xcode Command Line Tools, which provide `swift`
 - A GitHub personal access token, or an authenticated GitHub CLI (`gh`) session
