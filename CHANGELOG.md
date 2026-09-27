@@ -14,6 +14,10 @@ describes the release steps. Keep **Unreleased** as the first entry.
 
 ## Unreleased
 
+_Nothing yet._
+
+## [0.4.3](https://github.com/christhomas/Pullbar/releases/tag/v0.4.3) - 2026-09-28
+
 ### Added
 
 - GitHub Actions workflow that builds and signature-checks the app on every
@@ -40,3 +44,10 @@ describes the release steps. Keep **Unreleased** as the first entry.
   identifier, sources, Keychain item, and docs
   ([#1](https://github.com/lucaspal/Pullbar/pull/1),
   [#2](https://github.com/lucaspal/Pullbar/pull/2)).
+
+### Pull requests
+
+- Point the README badges at this fork ([#13](https://github.com/christhomas/Pullbar/pull/13)) by @christhomas
+- Use relative links for the README badges and releases ([#14](https://github.com/christhomas/Pullbar/pull/14)) by @christhomas
+- Remove PR Inbox.app on make install ([#15](https://github.com/christhomas/Pullbar/pull/15)) by @christhomas
+- Keep the GitHub token when upgrading from PR Inbox ([#16](https://github.com/christhomas/Pullbar/pull/16)) by @christhomas
