@@ -14,6 +14,10 @@ describes the release steps. Keep **Unreleased** as the first entry.
 
 ## Unreleased
 
+_Nothing yet._
+
+## [0.0.1-test.4](https://github.com/christhomas/Pullbar/releases/tag/v0.0.1-test.4) - 2026-09-27
+
 ### Added
 
 - GitHub Actions workflow that builds and signature-checks the app on every
@@ -30,3 +34,8 @@ describes the release steps. Keep **Unreleased** as the first entry.
   identifier, sources, Keychain item, and docs
   ([#1](https://github.com/lucaspal/Pullbar/pull/1),
   [#2](https://github.com/lucaspal/Pullbar/pull/2)).
+
+### Pull requests
+
+- TEST: merge ci/github-actions-build ([#2](https://github.com/christhomas/Pullbar/pull/2)) by @christhomas
+- TEST: merge docs/agent-screenshot-guide ([#3](https://github.com/christhomas/Pullbar/pull/3)) by @christhomas

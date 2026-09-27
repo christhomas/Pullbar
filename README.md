@@ -159,7 +159,7 @@ workflow build, sign, and publish the release. See `AGENTS.md` for the steps.
 
 <!-- changelog:start -->
 
-### Unreleased
+### [0.0.1-test.4](https://github.com/christhomas/Pullbar/releases/tag/v0.0.1-test.4) - 2026-09-27
 
 #### Added
 
@@ -177,5 +177,10 @@ workflow build, sign, and publish the release. See `AGENTS.md` for the steps.
   identifier, sources, Keychain item, and docs
   ([#1](https://github.com/lucaspal/Pullbar/pull/1),
   [#2](https://github.com/lucaspal/Pullbar/pull/2)).
+
+#### Pull requests
+
+- TEST: merge ci/github-actions-build ([#2](https://github.com/christhomas/Pullbar/pull/2)) by @christhomas
+- TEST: merge docs/agent-screenshot-guide ([#3](https://github.com/christhomas/Pullbar/pull/3)) by @christhomas
 
 <!-- changelog:end -->
