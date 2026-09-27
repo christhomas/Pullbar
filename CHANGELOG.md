@@ -3,7 +3,7 @@
 Notable changes to pullbar, newest first. Versions follow
 [Semantic Versioning](https://semver.org/).
 
-Each [GitHub release](https://github.com/lucaspal/Pullbar/releases) has the
+Each [GitHub release](../../releases) has the
 full notes: the title, author, and description of every pull request merged
 since the previous release. This file is the short summary.
 
