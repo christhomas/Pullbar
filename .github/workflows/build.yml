@@ -1,0 +1,136 @@
+name: Build
+
+# Every push to main and every pull request is tested, built, and
+# signature-checked.
+# Pushing a semver tag (v1.2.3, v1.2.3-rc.1) on a main commit also publishes
+# a GitHub release with the app zip attached.
+#
+# Actions are pinned to full commit SHAs (with the version in a comment), so a
+# moved or hijacked tag upstream cannot change the code that runs here.
+# Dependabot updates the pins.
+on:
+  push:
+    branches: [main]
+    tags: ['v[0-9]+.[0-9]+.[0-9]+*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  # Unit tests on every build, and the mutation test (deliberate bugs the
+  # tests must catch) on pull requests. Both skip until the repository has
+  # tests, so this workflow works before and after they are added.
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Unit tests
+        run: |
+          if [ ! -d Tests ]; then
+            echo "::notice::No Tests/ directory yet, so there is nothing to run."
+            exit 0
+          fi
+          swift test --enable-code-coverage
+
+      - name: Coverage summary
+        if: hashFiles('Tests/**') != ''
+        run: |
+          profile="$(dirname "$(swift test --show-codecov-path)")/default.profdata"
+          binary="$(find .build -path '*/Contents/MacOS/*' -name '*PackageTests' -type f | head -n 1)"
+          {
+            echo "### Test coverage"
+            echo '```'
+            xcrun llvm-cov report "$binary" -instr-profile="$profile" \
+              -ignore-filename-regex='(Tests|\.build)/' | sed 's#^.*/Sources/##'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Mutation test
+        if: github.event_name == 'pull_request' && hashFiles('scripts/mutation-test.sh') != ''
+        run: scripts/mutation-test.sh
+
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Check release tag
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          tag="$GITHUB_REF_NAME"
+          if ! printf '%s\n' "$tag" | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'; then
+            echo "::error::Tag $tag is not a semver tag like v1.2.3."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tag $tag points to a commit that is not on main. Releases are built only from main."
+            exit 1
+          fi
+          echo "VERSION=${tag#v}" >> "$GITHUB_ENV"
+
+      - name: Show toolchain
+        run: swift --version
+
+      - name: Build app bundle
+        run: make app
+
+      - name: Verify code signature
+        run: codesign --verify --verbose build/pullbar.app
+
+      # Named <name>-<version>-<platform>.zip, the pattern Homebrew tap sync
+      # scripts look for. Apple Silicon only.
+      - name: Zip app bundle
+        if: startsWith(github.ref, 'refs/tags/')
+        run: ditto -c -k --keepParent build/pullbar.app "build/pullbar-$VERSION-darwin-arm64.zip"
+
+      # Hands the zip to the release job only; it is not kept.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: pullbar-app
+          path: build/pullbar-*.zip
+          if-no-files-found: error
+          retention-days: 1
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: pullbar-app
+          path: dist
+
+      - name: Write release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: scripts/release-notes.sh "$GITHUB_REF_NAME" > release-notes.md
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=""
+          case "${GITHUB_REF_NAME%%+*}" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/*.zip \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "pullbar $GITHUB_REF_NAME" \
+            --notes-file release-notes.md \
+            --verify-tag $prerelease
