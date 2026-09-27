@@ -21,7 +21,7 @@ jobs:
   build:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -53,7 +53,7 @@ jobs:
         run: ditto -c -k --keepParent build/pullbar.app "build/pullbar-$VERSION.zip"
 
       # Hands the zip to the release job only; it is not kept.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: startsWith(github.ref, 'refs/tags/')
         with:
           name: pullbar-app
@@ -68,11 +68,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: pullbar-app
           path: dist
