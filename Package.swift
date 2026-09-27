@@ -14,5 +14,10 @@ let package = Package(
                 .linkedFramework("ServiceManagement"),
             ]
         ),
+        .testTarget(
+            name: "pullbarTests",
+            dependencies: ["pullbar"],
+            path: "Tests/pullbarTests"
+        ),
     ]
 )

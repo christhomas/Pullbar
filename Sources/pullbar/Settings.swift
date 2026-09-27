@@ -23,9 +23,12 @@ enum UpdatedWindow: String, CaseIterable {
     }
 
     /// The `updated:>=YYYY-MM-DD` search qualifier, or nil for no filter.
-    var searchQualifier: String? {
+    var searchQualifier: String? { searchQualifier(now: Date()) }
+
+    /// The qualifier for a given "now", in UTC.
+    func searchQualifier(now: Date) -> String? {
         guard let days else { return nil }
-        let date = Calendar(identifier: .gregorian).date(byAdding: .day, value: -days, to: Date()) ?? Date()
+        let date = Calendar(identifier: .gregorian).date(byAdding: .day, value: -days, to: now) ?? now
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.timeZone = TimeZone(identifier: "UTC")
@@ -37,7 +40,11 @@ enum UpdatedWindow: String, CaseIterable {
 @MainActor
 final class Settings {
     static let shared = Settings()
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
 
     static let refreshChoices: [TimeInterval] = [60, 120, 300, 900]
 

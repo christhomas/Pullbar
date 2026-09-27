@@ -2,26 +2,31 @@ import AppKit
 import Foundation
 
 /// Ensures standard paste works even though pullbar has no main Edit menu.
-private final class TokenTextField: NSSecureTextField {
+final class TokenTextField: NSSecureTextField {
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        let isPaste = event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command
-            && event.charactersIgnoringModifiers?.lowercased() == "v"
-        if isPaste {
+        if Self.isPaste(flags: event.modifierFlags, characters: event.charactersIgnoringModifiers) {
             currentEditor()?.paste(nil)
             return true
         }
         return super.performKeyEquivalent(with: event)
     }
+
+    /// Cmd-V and nothing else. Only the modifier keys count, so Caps Lock (and
+    /// the function and keypad flags) cannot stop a paste.
+    static func isPaste(flags: NSEvent.ModifierFlags, characters: String?) -> Bool {
+        flags.intersection([.command, .shift, .option, .control]) == .command && characters?.lowercased() == "v"
+    }
 }
 
 /// Finds a GitHub token: Keychain first, then a logged-in `gh` CLI, then a prompt.
 enum TokenProvider {
-    static func fromGhCLI() async -> String? {
+    /// `command` is for tests; it runs in a login shell.
+    static func fromGhCLI(command: String = "gh auth token 2>/dev/null") async -> String? {
         await Task.detached(priority: .utility) { () -> String? in
             let process = Process()
             // A login shell so Homebrew's PATH is available even when launched from Finder.
             process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-            process.arguments = ["-lc", "gh auth token 2>/dev/null"]
+            process.arguments = ["-lc", command]
             let pipe = Pipe()
             process.standardOutput = pipe
             process.standardError = FileHandle.nullDevice
@@ -30,8 +35,7 @@ enum TokenProvider {
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             process.waitUntilExit()
             guard process.terminationStatus == 0 else { return nil }
-            let token = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
-            return token.isEmpty ? nil : token
+            return Keychain.normalizedToken(String(decoding: data, as: UTF8.self))
         }.value
     }
 
@@ -59,7 +63,6 @@ enum TokenProvider {
 
         NSApp.activate(ignoringOtherApps: true)
         guard alert.runModal() == .alertFirstButtonReturn else { return nil }
-        let token = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        return token.isEmpty ? nil : token
+        return Keychain.normalizedToken(field.stringValue)
     }
 }

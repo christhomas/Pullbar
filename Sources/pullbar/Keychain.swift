@@ -9,11 +9,14 @@ struct KeychainError: LocalizedError {
 }
 
 /// Stores the GitHub token as a generic password in the user's login keychain.
+///
+/// `service` defaults to pullbar's own item; tests pass a throwaway name so
+/// they never touch the real token.
 enum Keychain {
-    private static let service = "pullbar GitHub token"
+    static let defaultService = "pullbar GitHub token"
     private static let account = "github.com"
 
-    private static var baseQuery: [String: Any] {
+    private static func baseQuery(service: String) -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -21,27 +24,32 @@ enum Keychain {
         ]
     }
 
-    static func readToken() -> String? {
-        var query = baseQuery
+    static func readToken(service: String = defaultService) -> String? {
+        var query = baseQuery(service: service)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
         guard status == errSecSuccess, let data = item as? Data else { return nil }
-        let token = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
-        return token.isEmpty ? nil : token
+        return normalizedToken(String(decoding: data, as: UTF8.self))
     }
 
-    static func writeToken(_ token: String) throws {
-        deleteToken()
-        var attrs = baseQuery
+    static func writeToken(_ token: String, service: String = defaultService) throws {
+        deleteToken(service: service)
+        var attrs = baseQuery(service: service)
         attrs[kSecValueData as String] = Data(token.utf8)
         attrs[kSecAttrLabel as String] = "pullbar (GitHub)"
         let status = SecItemAdd(attrs as CFDictionary, nil)
         guard status == errSecSuccess else { throw KeychainError(status: status) }
     }
 
-    static func deleteToken() {
-        SecItemDelete(baseQuery as CFDictionary)
+    static func deleteToken(service: String = defaultService) {
+        SecItemDelete(baseQuery(service: service) as CFDictionary)
+    }
+
+    /// Trims whitespace; an empty token counts as no token.
+    static func normalizedToken(_ raw: String) -> String? {
+        let token = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return token.isEmpty ? nil : token
     }
 }
