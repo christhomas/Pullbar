@@ -12,6 +12,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var lastError: Error?
     private var isRefreshing = false
     private var menuIsOpen = false
+    /// The menu bar title changed while the menu was open; apply it on close.
+    private var statusTitleIsStale = false
 
     /// Set with `--fixture <file.json>`: show that made-up inbox instead of
     /// asking GitHub. No token is read or requested.
@@ -64,10 +66,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func scheduleTimer() {
         timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: Settings.shared.refreshInterval, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: Settings.shared.refreshInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
-        timer?.tolerance = 10
+        timer.tolerance = 10
+        // Common modes include event tracking, so refreshes keep happening
+        // while the menu is open instead of pausing until it closes.
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
 
     // MARK: - Data
@@ -110,7 +116,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: - Status item
 
+    /// Shows the current data: the menu bar title, and the menu itself when
+    /// it is open, so a refresh that finishes while the menu is open appears
+    /// straight away rather than on the next open.
     private func render() {
+        if menuIsOpen {
+            rebuildMenu()
+            // A new title changes the status item's width, which would move
+            // the open menu under the pointer. Apply it when the menu closes.
+            statusTitleIsStale = true
+            return
+        }
         guard let button = statusItem.button else { return }
         if let inbox {
             let mine = inbox.count(.needsYourReview)
@@ -141,6 +157,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func menuDidClose(_ menu: NSMenu) {
         menuIsOpen = false
+        if statusTitleIsStale {
+            statusTitleIsStale = false
+            render()
+        }
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
