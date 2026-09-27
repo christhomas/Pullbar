@@ -50,6 +50,38 @@ These details matter only if you change the script:
 - For a manual screenshot, Cmd+Shift+5 closes open menus. Use Cmd+Shift+4,
   press Space, then click the menu.
 
+## Setting up release signing (once per repository)
+
+Release builds are signed with a Developer ID and notarized when the
+repository's `release` environment holds the signing secrets, and ad-hoc
+signed otherwise (see "Signing and notarization" in the README). Each fork
+uses its own secrets and ships under its owner's Developer ID.
+
+1. Create the environment and empty placeholders for the secrets:
+
+   ```sh
+   scripts/setup-release-environment.sh --repo <owner>/<repo> --placeholders
+   ```
+
+   This needs admin rights on the repository. It creates the `release`
+   environment, limits it to `v*` tags (so only release builds can read the
+   secrets), and creates any missing secret with an empty value. Empty
+   secrets count as missing, so releases stay ad-hoc signed until they are
+   filled in. Running it again is safe and never overwrites a secret.
+2. Tell the user to fill in the values, either by running
+   `scripts/setup-release-environment.sh` in their own terminal (it asks for
+   each one) or in the repository's Settings > Environments > release. The
+   README lists what each secret must contain.
+3. If the script warns that one of these secrets also exists at repository
+   level, tell the user: every workflow run can read those. Suggest deleting
+   them with the `gh secret delete` command it prints.
+4. After the next release, check the run log: "Import Developer ID
+   certificate" prints `Signing as: Developer ID Application: …`, and
+   "Notarize and staple" ends with `source=Notarized Developer ID`.
+
+Never ask for, read, paste, generate, or print the certificate, its
+password, or the API key yourself, and never store them anywhere else.
+
 ## Making a release
 
 Releases are built only from `main` and are started by pushing a semver tag

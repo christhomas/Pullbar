@@ -66,6 +66,7 @@ macOS may ask you to confirm its first launch.
 | `make run` | Builds and runs the release executable directly, without an app bundle. |
 | `make app` | Creates the ad-hoc-signed `build/pullbar.app` bundle. |
 | `make app VERSION=1.2.3` | Same, with `1.2.3` as the app version (used by the release workflow). |
+| `make app SIGN_IDENTITY="Developer ID Application: …"` | Signs with that identity, the hardened runtime, and a secure timestamp instead of ad hoc. |
 | `make install` | Creates the bundle, copies it to `~/Applications`, and opens it. |
 | `make clean` | Removes `.build` and `build`. |
 
@@ -137,6 +138,7 @@ count include every context GitHub returns for that rollup.
 | `scripts/create-release.sh` | Prepares a release branch: changelog entry and README section. |
 | `scripts/release-notes.sh` | Lists the pull requests merged since the previous tag, for release notes and the changelog. |
 | `scripts/changelog.sh` | Edits `CHANGELOG.md` and the README changelog section. |
+| `scripts/setup-release-environment.sh` | Creates the tag-only `release` environment and stores the signing secrets in it. |
 | `.github/workflows/build.yml` | CI build and tag-triggered GitHub release. |
 | `CHANGELOG.md` | Summary of changes per release. |
 | `LICENSE` | MIT license terms. |
@@ -158,6 +160,45 @@ prepares the changelog and this section on a release branch; after that
 branch is merged, pushing the `v1.2.0` tag on `main` makes the **Build**
 workflow build, sign, and publish the release. See `AGENTS.md` for the steps.
 
+### Signing and notarization (optional)
+
+Release builds are signed with a Developer ID and notarized by Apple when the
+repository's `release` environment has the secrets below. Without them, the
+signing steps are skipped and the release is ad-hoc signed: it works, but
+macOS Gatekeeper warns users on first launch. Each fork signs with its own
+secrets, so every maintainer ships under their own Developer ID.
+
+The secrets live in a GitHub environment, not at repository level. The
+`release` environment accepts only runs for `v*` tags, so the secrets reach
+release builds and nothing else. A workflow edited on a branch or in a pull
+request cannot read them.
+
+| Secret | Value |
+|---|---|
+| `MACOS_CERTIFICATE` | Your **Developer ID Application** certificate with its private key, exported from Keychain Access as a `.p12`, base64-encoded. |
+| `MACOS_CERTIFICATE_PASSWORD` | The password you gave the `.p12` when exporting it. |
+| `NOTARY_API_KEY` | An App Store Connect API key (Users and Access > Integrations > Team Keys, role Developer): the contents of the downloaded `.p8` file. |
+| `NOTARY_KEY_ID` | The ID of that key. |
+| `NOTARY_ISSUER_ID` | The issuer ID shown above the list of keys. |
+
+Set everything up by running this in a terminal:
+
+```sh
+scripts/setup-release-environment.sh
+```
+
+It creates the `release` environment, limits it to `v*` tags, and warns if
+any of these secrets also exist at repository level, where every run could
+read them. It then asks for each secret and stores it with `gh secret set`,
+which reads the value without showing it. Running it again is safe, and it
+asks before replacing a secret. Without a terminal (for example when a coding
+agent runs it), it only sets up the environment and prints the `gh secret
+set --env release` commands for you to run.
+
+With only the two certificate secrets, releases are signed but not notarized,
+so Gatekeeper still warns. Pull requests from forks never receive secrets, so
+they always build ad hoc.
+
 <!-- changelog:start -->
 
 ### Unreleased
@@ -172,6 +213,8 @@ workflow build, sign, and publish the release. See `AGENTS.md` for the steps.
   tag, and the README changelog section. No dependencies beyond git, `gh`,
   bash, and awk.
 - `make app VERSION=X.Y.Z` stamps the version into the app bundle.
+- Release builds are signed with a Developer ID and notarized when the
+  repository has the signing secrets, and ad-hoc signed otherwise.
 - `CHANGELOG.md`, with the two newest entries repeated at the end of the
   README.
 - MIT license ([#3](https://github.com/lucaspal/Pullbar/pull/3)).
