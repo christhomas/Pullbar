@@ -1,0 +1,8 @@
+{
+  "viewerLogin": "octocat",
+  "error": "GitHub rejected the token (401). Set a new one.",
+  "direct": [
+    { "number": 482, "title": "Add rate limiting to the public search endpoint", "repository": "acme/api", "author": "mona", "updated": "25m",
+      "reviewDecision": "REVIEW_REQUIRED", "checks": { "state": "SUCCESS", "passed": 14, "total": 14 }, "comments": 3 }
+  ]
+}
