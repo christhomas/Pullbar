@@ -45,7 +45,7 @@ MUTATIONS=(
     "Sources/pullbar/GitHubClient.swift@@s/!errors\.isEmpty, envelope\.data == nil/!errors.isEmpty/@@partial data thrown away"
     "Sources/pullbar/GitHubClient.swift@@s/\?\? \"ghost\"/?? \"\"/@@missing author not shown as ghost"
     "Sources/pullbar/GitHubClient.swift@@s/\"is:pr \\\\\(query\)\"/\"\\\\(query)\"/@@searches include issues"
-    "Sources/pullbar/GitHubClient.swift@@s/\"first\": 50/\"first\": 100/@@wrong page size"
+    "Sources/pullbar/GitHubClient.swift@@s/\"first\": 100/\"first\": 50/@@wrong page size"
     "Sources/pullbar/GitHubClient.swift@@s/\"Bearer \\\\\(token\)\"/\"token \\\\(token)\"/@@wrong authorization header"
     "Sources/pullbar/InboxService.swift@@s/user-review-requested:\@me/review-requested:\@me/@@direct review requests not searched"
     "Sources/pullbar/InboxService.swift@@s/\"archived:false\", //@@archived repositories included"

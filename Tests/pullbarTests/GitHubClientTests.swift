@@ -66,7 +66,7 @@ final class GitHubClientTests: XCTestCase {
         XCTAssertEqual(request.headers["User-Agent"], "pullbar-menubar")
         XCTAssertTrue(request.query.contains("query PullbarSearch"))
         XCTAssertEqual(request.variables["q"] as? String, "is:pr review-requested:@me")
-        XCTAssertEqual(request.variables["first"] as? Int, 50)
+        XCTAssertEqual(request.variables["first"] as? Int, 100)
         XCTAssertNil(request.variables["after"], "no cursor on the first page")
     }
 
