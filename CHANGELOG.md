@@ -16,6 +16,13 @@ describes the release steps. Keep **Unreleased** as the first entry.
 
 _Nothing yet._
 
+## [0.2.0](https://github.com/christhomas/Pullbar/releases/tag/v0.2.0) - 2026-09-27
+
+### Pull requests
+
+- Sync ci/github-actions-build: shell changelog script ([#7](https://github.com/christhomas/Pullbar/pull/7)) by @christhomas
+- Sync docs/agent-screenshot-guide: shell changelog script ([#8](https://github.com/christhomas/Pullbar/pull/8)) by @christhomas
+
 ## [0.1.0](https://github.com/christhomas/Pullbar/releases/tag/v0.1.0) - 2026-09-27
 
 ### Pull requests

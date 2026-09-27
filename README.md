@@ -159,34 +159,17 @@ workflow build, sign, and publish the release. See `AGENTS.md` for the steps.
 
 <!-- changelog:start -->
 
+### [0.2.0](https://github.com/christhomas/Pullbar/releases/tag/v0.2.0) - 2026-09-27
+
+#### Pull requests
+
+- Sync ci/github-actions-build: shell changelog script ([#7](https://github.com/christhomas/Pullbar/pull/7)) by @christhomas
+- Sync docs/agent-screenshot-guide: shell changelog script ([#8](https://github.com/christhomas/Pullbar/pull/8)) by @christhomas
+
 ### [0.1.0](https://github.com/christhomas/Pullbar/releases/tag/v0.1.0) - 2026-09-27
 
 #### Pull requests
 
 _None._
-
-### [0.0.1-test.4](https://github.com/christhomas/Pullbar/releases/tag/v0.0.1-test.4) - 2026-09-27
-
-#### Added
-
-- GitHub Actions workflow that builds and signature-checks the app on every
-  push to `main` and every pull request, and publishes a GitHub release with
-  the app zip when a `vX.Y.Z` tag is pushed on `main`.
-- `make app VERSION=X.Y.Z` stamps the version into the app bundle.
-- `CHANGELOG.md`, with the two newest entries repeated at the end of the
-  README.
-- MIT license ([#3](https://github.com/lucaspal/Pullbar/pull/3)).
-
-#### Changed
-
-- Renamed the project from "PR Inbox" to "pullbar": package, bundle
-  identifier, sources, Keychain item, and docs
-  ([#1](https://github.com/lucaspal/Pullbar/pull/1),
-  [#2](https://github.com/lucaspal/Pullbar/pull/2)).
-
-#### Pull requests
-
-- TEST: merge ci/github-actions-build ([#2](https://github.com/christhomas/Pullbar/pull/2)) by @christhomas
-- TEST: merge docs/agent-screenshot-guide ([#3](https://github.com/christhomas/Pullbar/pull/3)) by @christhomas
 
 <!-- changelog:end -->
