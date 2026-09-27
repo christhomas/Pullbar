@@ -66,6 +66,32 @@ macOS may ask you to confirm its first launch.
 **Launch at login** is available only when the app runs from a packaged `.app`
 bundle, including the one installed by `make install`.
 
+### Fake data (fixtures)
+
+To see how the menu renders without a GitHub account, or to take a
+screenshot without showing real pull requests, start the app with a fixture:
+
+```sh
+make app
+open build/pullbar.app --args --fixture "$PWD/Fixtures/showcase.json"
+```
+
+The app then shows the made-up inbox from that JSON file instead of asking
+GitHub, and does not read or ask for a token. It reads the file again every
+time the menu opens, so edits show up on the next open.
+
+| Fixture | Shows |
+|---|---|
+| `Fixtures/showcase.json` | Every section and state: drafts, pending, failing and passing checks, changes requested, a conflict, team requests, and large comment counts. |
+| `Fixtures/empty.json` | An inbox with nothing in it. |
+| `Fixtures/error.json` | A failed refresh: the error banner above a partial inbox. |
+
+In a fixture, `direct` and `teams` are review requests and `authored` are
+your own pull requests, which the app sorts into sections by the same rules
+as real data. `updated` is relative (`45m`, `3h`, `2d`, `5w`), so a fixture
+looks the same whenever it is shown. See `Sources/pullbar/Fixture.swift` for
+every field.
+
 ## Authentication and stored data
 
 At launch, the app obtains a token in this order:
@@ -126,6 +152,8 @@ count include every context GitHub returns for that rollup.
 | `Sources/pullbar/TokenProvider.swift` | Keychain, GitHub CLI, and token-prompt lookup. |
 | `Sources/pullbar/Keychain.swift` | Login-Keychain storage. |
 | `Sources/pullbar/Settings.swift` | `UserDefaults` settings. |
+| `Sources/pullbar/Fixture.swift` | Loads a made-up inbox from JSON (`--fixture`). |
+| `Fixtures/` | Example fixture files. |
 | `Packaging/` | App metadata and icon-build script. |
 | `Makefile` | Build, bundle, install, and clean targets. |
 | `LICENSE` | MIT license terms. |
