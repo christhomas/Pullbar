@@ -120,19 +120,20 @@ final class MenuTests: XCTestCase {
 
         // Positions relative to the first section header.
         let s = try XCTUnwrap(titles.firstIndex(of: "NEEDS YOUR REVIEW  1"))
-        XCTAssertTrue(titles[s + 1].hasPrefix("Fix the thing\nacme/api#42 · mona · updated "), titles[s + 1])
+        XCTAssertEqual(titles[s + 1], "acme", "owner subheading")
+        XCTAssertTrue(titles[s + 2].hasPrefix("Fix the thing\nacme/api#42 · mona · updated "), titles[s + 2])
         for part in ["Approved", "3/4", "conflicts", "💬 5"] {
-            XCTAssertTrue(titles[s + 1].contains(part), "\(part) missing from \(titles[s + 1])")
+            XCTAssertTrue(titles[s + 2].contains(part), "\(part) missing from \(titles[s + 2])")
         }
-        XCTAssertEqual(titles[s + 2], "---")
-        XCTAssertEqual(titles[s + 3], "NEEDS YOUR TEAMS' REVIEW  0")
-        XCTAssertEqual(titles[s + 4], "Nothing to review")
+        XCTAssertEqual(titles[s + 3], "---")
+        XCTAssertEqual(titles[s + 4], "NEEDS YOUR TEAMS' REVIEW  0")
+        XCTAssertEqual(titles[s + 5], "Nothing to review")
 
-        let item = app.menuForTesting.items[s + 1]
+        let item = app.menuForTesting.items[s + 2]
         XCTAssertTrue(item.isEnabled)
         XCTAssertEqual(item.representedObject as? URL, pr.url)
         XCTAssertEqual(item.toolTip, "acme/api#42\nFix the thing\n\nClick to open on GitHub")
-        XCTAssertEqual(item.indentationLevel, 1)
+        XCTAssertEqual(item.indentationLevel, 2, "rows sit under their owner subheading")
 
         for (section, empty) in zip(InboxSection.allCases.dropFirst(), ["Nothing to review", "No drafts", "All caught up", "Nothing needs your action", "Nothing ready to merge"]) {
             XCTAssertTrue(titles.contains(empty), "\(section) should say \(empty)")
