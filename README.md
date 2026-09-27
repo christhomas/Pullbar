@@ -1,5 +1,10 @@
 # pullbar
 
+[![Build](https://github.com/lucaspal/Pullbar/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/lucaspal/Pullbar/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/lucaspal/Pullbar?include_prereleases&sort=semver)](https://github.com/lucaspal/Pullbar/releases)
+[![License: MIT](https://img.shields.io/github/license/lucaspal/Pullbar)](LICENSE)
+![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue)
+
 pullbar is a native macOS menu bar app for checking your open GitHub pull
 requests without opening a browser. It reads GitHub's GraphQL API and presents
 six inbox-style sections in a menu-bar popover. It has no Dock icon or main
@@ -128,7 +133,22 @@ count include every context GitHub returns for that rollup.
 | `Sources/pullbar/Settings.swift` | `UserDefaults` settings. |
 | `Packaging/` | App metadata and icon-build script. |
 | `Makefile` | Build, bundle, install, and clean targets. |
+| `scripts/release-notes.sh` | Builds release notes from the pull requests merged since the previous tag. |
+| `.github/workflows/build.yml` | CI build and tag-triggered GitHub release. |
+| `CHANGELOG.md` | Summary of changes per release. |
 | `LICENSE` | MIT license terms. |
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a summary of each release. The
+[GitHub releases](https://github.com/lucaspal/Pullbar/releases) page has the
+full notes, one entry per merged pull request, and a downloadable
+`pullbar.app` zip.
+
+Releases are built only from `main`. To publish one, push a semver tag such
+as `v1.2.0` (or `v1.2.0-rc.1` for a pre-release) on a commit that is already
+on `main`. The **Build** workflow checks the tag, builds and signs the app with
+that version, writes the notes, and creates the release.
 
 ## License
 
