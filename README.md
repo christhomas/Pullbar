@@ -159,6 +159,12 @@ workflow build, sign, and publish the release. See `AGENTS.md` for the steps.
 
 <!-- changelog:start -->
 
+### [0.1.0](https://github.com/christhomas/Pullbar/releases/tag/v0.1.0) - 2026-09-27
+
+#### Pull requests
+
+_None._
+
 ### [0.0.1-test.4](https://github.com/christhomas/Pullbar/releases/tag/v0.0.1-test.4) - 2026-09-27
 
 #### Added
