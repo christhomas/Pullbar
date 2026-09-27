@@ -1,6 +1,8 @@
 APP_NAME := pullbar
 BUILD_DIR := build
 APP := $(BUILD_DIR)/$(APP_NAME).app
+## Optional: stamp CFBundleShortVersionString, e.g. `make app VERSION=1.2.3`
+VERSION ?=
 
 .PHONY: build run app install clean
 
@@ -20,6 +22,9 @@ app: build $(APP_ICON)
 	mkdir -p "$(APP)/Contents/MacOS" "$(APP)/Contents/Resources"
 	cp .build/release/pullbar "$(APP)/Contents/MacOS/pullbar"
 	cp Packaging/Info.plist "$(APP)/Contents/Info.plist"
+ifneq ($(VERSION),)
+	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(VERSION)" "$(APP)/Contents/Info.plist"
+endif
 	cp "$(APP_ICON)" "$(APP)/Contents/Resources/AppIcon.icns"
 	echo -n "APPL????" > "$(APP)/Contents/PkgInfo"
 	codesign --force --sign - --identifier dev.pullbar.menubar "$(APP)"
