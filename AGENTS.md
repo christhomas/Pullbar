@@ -76,3 +76,73 @@ so double the values `osascript` reports.
   Or use `screencapture -T 5 ...` and open the menu during the 5-second delay.
 - Screenshots can contain private content from other apps on the same
   display. Crop to the menu before you save or share an image.
+
+## Making a release
+
+Releases are built only from `main` and are started by pushing a semver tag
+(`v1.2.3`, or `v1.2.3-rc.1` for a pre-release). The tag push runs the
+**Build** workflow (`.github/workflows/build.yml`), which checks the tag,
+builds and signs the app with that version, writes the release notes from the
+merged pull requests (`scripts/release-notes.sh`), and publishes a GitHub
+release with the zipped app.
+
+The changelog is prepared locally first, so the tagged commit already
+contains its own `CHANGELOG.md` entry and README section. Do not edit the
+README changelog block (between `<!-- changelog:start -->` and
+`<!-- changelog:end -->`) by hand; `scripts/changelog.py` owns it.
+
+### Steps
+
+1. Pick the version. Follow semver from the changes since the last tag:
+   breaking change = major, new feature = minor, fixes only = patch. Check the
+   last tag with `git describe --tags --abbrev=0 --match 'v[0-9]*' origin/main`.
+   Ask the user if the version is not obvious.
+2. Optional: add highlights under `## Unreleased` in `CHANGELOG.md`, run
+   `scripts/changelog.py readme`, and merge that to `main` first. The merged
+   pull requests are listed automatically, so this is only for a summary.
+3. Start from an up-to-date `main` with a clean working tree, then prepare
+   the release:
+
+   ```sh
+   git switch main && git pull origin main
+   scripts/create-release.sh v1.2.3
+   ```
+
+   The script checks the tag, creates the `release/v1.2.3` branch, moves the
+   Unreleased notes into a `1.2.3` entry, adds the list of pull requests
+   merged since the previous tag, refreshes the README block, and commits
+   `Release v1.2.3`. Review the commit (`git show`) before you continue.
+4. Push the branch and open a pull request:
+
+   ```sh
+   git push -u origin release/v1.2.3
+   gh pr create --base main --head release/v1.2.3 --title "Release v1.2.3" --fill
+   ```
+
+5. After the pull request is merged, tag the merge commit on `main`:
+
+   ```sh
+   git switch main && git pull origin main
+   git tag -a v1.2.3 -m "Release v1.2.3"
+   git push origin v1.2.3
+   ```
+
+6. Watch the run with `gh run watch`, then check the release with
+   `gh release view v1.2.3`: it must have the `pullbar-1.2.3.zip` asset and
+   notes for each merged pull request.
+
+Pushing a tag publishes a release, so only do steps 4 and 5 when the user has
+asked for the release.
+
+### Notes
+
+- The scripts look up pull requests in `lucaspal/Pullbar`. On a fork, set
+  `REPO=<owner>/Pullbar` (and `REMOTE=<remote>` if `main` is not on `origin`)
+  for `create-release.sh`; the workflow uses the repository it runs in.
+- Pull requests from `release/*` branches are left out of the notes and the
+  changelog list.
+- If the workflow fails at "Check release tag", the tag is not semver or its
+  commit is not on `main`. Delete the tag (`git push origin :refs/tags/v1.2.3`
+  and `git tag -d v1.2.3`), fix the cause, and tag again.
+- The app is ad-hoc signed, not notarized, so macOS warns people who
+  download it from the release.
