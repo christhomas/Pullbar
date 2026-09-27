@@ -13,6 +13,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var isRefreshing = false
     private var menuIsOpen = false
 
+    /// Set with `--fixture <file.json>`: show that made-up inbox instead of
+    /// asking GitHub. No token is read or requested.
+    private let fixtureURL = Fixture.path(in: CommandLine.arguments).map { URL(fileURLWithPath: $0) }
+
     private let relative: RelativeDateTimeFormatter = {
         let f = RelativeDateTimeFormatter()
         f.unitsStyle = .full
@@ -33,7 +37,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.autoenablesItems = false
         statusItem.menu = menu
 
-        Task { await bootstrapToken() }
+        if fixtureURL != nil {
+            scheduleTimer()
+            refresh()
+        } else {
+            Task { await bootstrapToken() }
+        }
     }
 
     private func bootstrapToken() async {
@@ -64,6 +73,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: - Data
 
     func refresh() {
+        if let fixtureURL {
+            loadFixture(fixtureURL)
+            return
+        }
         guard !isRefreshing, let token else { return }
         isRefreshing = true
         let service = InboxService(client: GitHubClient(token: token))
@@ -79,6 +92,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self.isRefreshing = false
             self.render()
         }
+    }
+
+    /// Reads the fixture again on every refresh (opening the menu, and the
+    /// refresh timer), so edits to the file show up like new data from GitHub.
+    private func loadFixture(_ url: URL) {
+        do {
+            let fixture = try Fixture.load(from: url)
+            inbox = try fixture.inbox()
+            lastError = fixture.error.map { Fixture.Invalid(errorDescription: $0) }
+        } catch {
+            inbox = nil
+            lastError = error
+        }
+        render()
     }
 
     // MARK: - Status item
