@@ -119,6 +119,23 @@ final class KeychainTests: XCTestCase {
         XCTAssertNil(Keychain.normalizedToken(" \n"))
     }
 
+    func testLegacyItemIsPRInboxs() {
+        XCTAssertEqual(Keychain.legacyService, "PRInbox GitHub token")
+    }
+
+    func testMigrateMovesTheLegacyToken() throws {
+        let legacy = "\(service)-legacy"
+        defer { Keychain.deleteToken(service: legacy) }
+        XCTAssertNil(Keychain.migrateToken(from: legacy, to: service), "nothing to move")
+        XCTAssertNil(Keychain.readToken(service: service))
+
+        try Keychain.writeToken(" ghp_old\n", service: legacy)
+        XCTAssertEqual(Keychain.migrateToken(from: legacy, to: service), "ghp_old")
+        XCTAssertEqual(Keychain.readToken(service: service), "ghp_old")
+        XCTAssertNil(Keychain.readToken(service: legacy), "the old item is deleted")
+        XCTAssertNil(Keychain.migrateToken(from: legacy, to: service), "a second run moves nothing")
+    }
+
     func testErrorDescription() {
         XCTAssertFalse((KeychainError(status: errSecItemNotFound).errorDescription ?? "").isEmpty)
     }

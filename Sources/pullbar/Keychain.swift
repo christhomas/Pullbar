@@ -14,6 +14,8 @@ struct KeychainError: LocalizedError {
 /// they never touch the real token.
 enum Keychain {
     static let defaultService = "pullbar GitHub token"
+    /// Where PR Inbox, pullbar's former name, kept the token.
+    static let legacyService = "PRInbox GitHub token"
     private static let account = "github.com"
 
     private static func baseQuery(service: String) -> [String: Any] {
@@ -51,5 +53,20 @@ enum Keychain {
     static func normalizedToken(_ raw: String) -> String? {
         let token = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         return token.isEmpty ? nil : token
+    }
+
+    /// Moves a token saved under `legacy` to `service` and deletes the old
+    /// item, so upgrading from PR Inbox keeps the user signed in. Returns the
+    /// token, or nil when there was none. If saving fails the old item stays,
+    /// and the move is tried again on the next launch.
+    static func migrateToken(from legacy: String = legacyService, to service: String = defaultService) -> String? {
+        guard let token = readToken(service: legacy) else { return nil }
+        do {
+            try writeToken(token, service: service)
+        } catch {
+            return token
+        }
+        deleteToken(service: legacy)
+        return token
     }
 }
