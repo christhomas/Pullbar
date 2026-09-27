@@ -1,8 +1,9 @@
 # pullbar
 
-[![Build](https://github.com/christhomas/Pullbar/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/christhomas/Pullbar/actions/workflows/build.yml)
-[![Release](https://img.shields.io/github/v/release/christhomas/Pullbar?include_prereleases&sort=semver)](https://github.com/christhomas/Pullbar/releases)
-[![License: MIT](https://img.shields.io/github/license/lucaspal/Pullbar)](LICENSE)
+<!-- Relative links, so each fork's README shows that fork's own build and releases. -->
+[![Build](../../actions/workflows/build.yml/badge.svg?branch=main)](../../actions/workflows/build.yml)
+[![Releases](https://img.shields.io/badge/download-releases-blue)](../../releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue)
 
 pullbar is a native macOS menu bar app for checking your open GitHub pull
@@ -208,7 +209,7 @@ pullbar is available under the [MIT License](LICENSE).
 
 The two most recent entries from [CHANGELOG.md](CHANGELOG.md). See that file
 for older versions, and the
-[GitHub releases](https://github.com/christhomas/Pullbar/releases) page for the
+[GitHub releases](../../releases) page for the
 full notes (one entry per merged pull request) and a downloadable
 `pullbar.app` zip.
 
