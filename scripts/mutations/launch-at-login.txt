@@ -1,0 +1,3 @@
+Sources/pullbar/LaunchAtLogin.swift@@s/bundlePath\.contains\("\/AppTranslocation\/"\)/bundlePath.contains("\/Translocation\/")/@@quarantined downloads not detected
+Sources/pullbar/LaunchAtLogin.swift@@s/case \.requiresApproval: return \.needsApproval/case .requiresApproval: return .available(enabled: false)/@@switched-off login item looks like off
+Sources/pullbar/LaunchAtLogin.swift@@s/bundlePath\.contains\("\/Cellar\/"\)/false/@@Homebrew formula installs not detected
