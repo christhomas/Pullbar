@@ -89,7 +89,7 @@ release with the zipped app.
 The changelog is prepared locally first, so the tagged commit already
 contains its own `CHANGELOG.md` entry and README section. Do not edit the
 README changelog block (between `<!-- changelog:start -->` and
-`<!-- changelog:end -->`) by hand; `scripts/changelog.py` owns it.
+`<!-- changelog:end -->`) by hand; `scripts/changelog.sh` owns it.
 
 ### Steps
 
@@ -98,7 +98,7 @@ README changelog block (between `<!-- changelog:start -->` and
    last tag with `git describe --tags --abbrev=0 --match 'v[0-9]*' origin/main`.
    Ask the user if the version is not obvious.
 2. Optional: add highlights under `## Unreleased` in `CHANGELOG.md`, run
-   `scripts/changelog.py readme`, and merge that to `main` first. The merged
+   `scripts/changelog.sh readme`, and merge that to `main` first. The merged
    pull requests are listed automatically, so this is only for a summary.
 3. Start from an up-to-date `main` with a clean working tree, then prepare
    the release:
