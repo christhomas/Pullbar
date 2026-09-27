@@ -133,23 +133,49 @@ count include every context GitHub returns for that rollup.
 | `Sources/pullbar/Settings.swift` | `UserDefaults` settings. |
 | `Packaging/` | App metadata and icon-build script. |
 | `Makefile` | Build, bundle, install, and clean targets. |
-| `scripts/release-notes.sh` | Builds release notes from the pull requests merged since the previous tag. |
+| `scripts/create-release.sh` | Prepares a release branch: changelog entry and README section. |
+| `scripts/release-notes.sh` | Lists the pull requests merged since the previous tag, for release notes and the changelog. |
+| `scripts/changelog.py` | Edits `CHANGELOG.md` and the README changelog section. |
 | `.github/workflows/build.yml` | CI build and tag-triggered GitHub release. |
 | `CHANGELOG.md` | Summary of changes per release. |
 | `LICENSE` | MIT license terms. |
 
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for a summary of each release. The
-[GitHub releases](https://github.com/lucaspal/Pullbar/releases) page has the
-full notes, one entry per merged pull request, and a downloadable
-`pullbar.app` zip.
-
-Releases are built only from `main`. To publish one, push a semver tag such
-as `v1.2.0` (or `v1.2.0-rc.1` for a pre-release) on a commit that is already
-on `main`. The **Build** workflow checks the tag, builds and signs the app with
-that version, writes the notes, and creates the release.
-
 ## License
 
 pullbar is available under the [MIT License](LICENSE).
+
+## Changelog
+
+The two most recent entries from [CHANGELOG.md](CHANGELOG.md). See that file
+for older versions, and the
+[GitHub releases](https://github.com/lucaspal/Pullbar/releases) page for the
+full notes (one entry per merged pull request) and a downloadable
+`pullbar.app` zip.
+
+Releases are built only from `main`. `scripts/create-release.sh v1.2.0`
+prepares the changelog and this section on a release branch; after that
+branch is merged, pushing the `v1.2.0` tag on `main` makes the **Build**
+workflow build, sign, and publish the release. See `AGENTS.md` for the steps.
+
+<!-- changelog:start -->
+
+### Unreleased
+
+#### Added
+
+- GitHub Actions workflow that builds and signature-checks the app on every
+  push to `main` and every pull request, and publishes a GitHub release with
+  the app zip when a `vX.Y.Z` tag is pushed on `main`.
+- `make app VERSION=X.Y.Z` stamps the version into the app bundle.
+- `CHANGELOG.md`, with the two newest entries repeated at the end of the
+  README.
+- MIT license ([#3](https://github.com/lucaspal/Pullbar/pull/3)).
+
+#### Changed
+
+- Renamed the project from "PR Inbox" to "pullbar": package, bundle
+  identifier, sources, Keychain item, and docs
+  ([#1](https://github.com/lucaspal/Pullbar/pull/1),
+  [#2](https://github.com/lucaspal/Pullbar/pull/2)).
+
+<!-- changelog:end -->
