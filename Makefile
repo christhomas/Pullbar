@@ -14,7 +14,7 @@ else
 SIGN_FLAGS := --options runtime --timestamp
 endif
 
-.PHONY: build run app install clean
+.PHONY: build run test mutation-test app install clean
 
 APP_ICON := $(BUILD_DIR)/AppIcon.icns
 
@@ -55,3 +55,11 @@ install: app
 
 clean:
 	rm -rf .build "$(BUILD_DIR)"
+
+## Run the unit tests
+test:
+	swift test
+
+## Check that the tests catch deliberate bugs (see scripts/mutation-test.sh)
+mutation-test:
+	scripts/mutation-test.sh

@@ -21,19 +21,25 @@ enum GitHubError: LocalizedError {
     }
 }
 
-/// Minimal GitHub GraphQL client: one `search` per inbox query, plus paging
-/// of check contexts for PRs with more than 100 checks.
+/// Minimal GitHub GraphQL client: one `search` per inbox query. Check results
+/// come as GitHub's per-state counts, so no extra requests are needed however
+/// many checks a pull request has.
 final class GitHubClient: @unchecked Sendable {
     private let token: String
     private let endpoint = URL(string: "https://api.github.com/graphql")!
     private let session: URLSession
     private let decoder: JSONDecoder
 
-    init(token: String) {
+    /// `session` is for tests, which answer requests with a stub.
+    init(token: String, session: URLSession? = nil) {
         self.token = token
-        let config = URLSessionConfiguration.ephemeral
-        config.timeoutIntervalForRequest = 30
-        session = URLSession(configuration: config)
+        if let session {
+            self.session = session
+        } else {
+            let config = URLSessionConfiguration.ephemeral
+            config.timeoutIntervalForRequest = 30
+            self.session = URLSession(configuration: config)
+        }
         decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
     }
@@ -60,22 +66,15 @@ final class GitHubClient: @unchecked Sendable {
             cursor = next
         }
 
-        // Finish counting checks where the first page of 100 contexts was not all of them.
-        var prs: [PullRequest] = []
-        try await withThrowingTaskGroup(of: PullRequest?.self) { group in
-            for node in raw {
-                group.addTask { try await self.materialize(node) }
-            }
-            for try await pr in group {
-                if let pr { prs.append(pr) }
-            }
-        }
-        return SearchResult(viewerLogin: viewer, pullRequests: prs)
+        return SearchResult(viewerLogin: viewer, pullRequests: raw.compactMap(Self.materialize))
     }
 
     // MARK: - Internals
 
-    private func materialize(_ node: GQL.PullRequest) async throws -> PullRequest? {
+    /// Turns one pull request from GitHub's response into the app's model, or
+    /// nil when a required field is missing (e.g. a search hit that is not a
+    /// pull request).
+    static func materialize(_ node: GQL.PullRequest) -> PullRequest? {
         guard let id = node.id, let number = node.number, let title = node.title,
               let url = node.url, let updatedAt = node.updatedAt,
               let repo = node.repository?.nameWithOwner
@@ -83,21 +82,10 @@ final class GitHubClient: @unchecked Sendable {
 
         var checks: Checks? = nil
         if let rollup = node.commits?.nodes.first?.commit.statusCheckRollup {
-            var contexts = rollup.contexts.nodes
-            var page = rollup.contexts.pageInfo
-            while page.hasNextPage, let after = page.endCursor {
-                let more: GQL.NodeData = try await post(
-                    GQL.contextsQuery, variables: ["id": id, "after": after]
-                )
-                guard let next = more.node?.commits?.nodes.first?.commit.statusCheckRollup?.contexts else { break }
-                contexts.append(contentsOf: next.nodes)
-                page = next.pageInfo
-            }
-            let passed = contexts.filter(\.passed).count
             checks = Checks(
                 state: Checks.State(rawValue: rollup.state) ?? .pending,
                 total: rollup.contexts.totalCount,
-                passed: passed
+                passed: rollup.contexts.passedCount
             )
         }
 
@@ -168,10 +156,6 @@ enum GQL {
         let search: Search
     }
 
-    struct NodeData: Decodable {
-        let node: PullRequest?
-    }
-
     /// All fields optional: a search node that is not a PullRequest decodes
     /// to an empty object and is dropped.
     struct PullRequest: Decodable {
@@ -186,26 +170,25 @@ enum GQL {
             let nodes: [Node]
         }
         struct Rollup: Decodable {
+            /// GitHub's counts of the head commit's checks, by state. Counting
+            /// here instead of listing the checks keeps the total exact for any
+            /// number of checks, in the same single request.
             struct Contexts: Decodable {
+                struct StateCount: Decodable {
+                    let state: String
+                    let count: Int
+                }
                 let totalCount: Int
-                let pageInfo: PageInfo
-                let nodes: [Context]
-            }
-            struct Context: Decodable {
-                let __typename: String
-                let status: String?
-                let conclusion: String?
-                let state: String?
+                let checkRunCountsByState: [StateCount]
+                let statusContextCountsByState: [StateCount]
 
-                var passed: Bool {
-                    switch __typename {
-                    case "CheckRun":
-                        return ["SUCCESS", "NEUTRAL", "SKIPPED"].contains(conclusion ?? "")
-                    case "StatusContext":
-                        return state == "SUCCESS"
-                    default:
-                        return false
-                    }
+                /// Check runs that succeeded, were neutral, or were skipped, and
+                /// commit statuses that succeeded.
+                var passedCount: Int {
+                    let passingRuns: Set = ["SUCCESS", "NEUTRAL", "SKIPPED"]
+                    let runs = checkRunCountsByState.filter { passingRuns.contains($0.state) }
+                    let statuses = statusContextCountsByState.filter { $0.state == "SUCCESS" }
+                    return (runs + statuses).reduce(0) { $0 + $1.count }
                 }
             }
             let state: String
@@ -243,14 +226,10 @@ enum GQL {
         commit {
           statusCheckRollup {
             state
-            contexts(first: 100) {
+            contexts(first: 0) {
               totalCount
-              pageInfo { hasNextPage endCursor }
-              nodes {
-                __typename
-                ... on CheckRun { status conclusion }
-                ... on StatusContext { state }
-              }
+              checkRunCountsByState { state count }
+              statusContextCountsByState { state count }
             }
           }
         }
@@ -267,33 +246,6 @@ enum GQL {
         nodes {
           ... on PullRequest {
             \(pullRequestFields)
-          }
-        }
-      }
-    }
-    """
-
-    static let contextsQuery = """
-    query PullbarContexts($id: ID!, $after: String!) {
-      node(id: $id) {
-        ... on PullRequest {
-          commits(last: 1) {
-            nodes {
-              commit {
-                statusCheckRollup {
-                  state
-                  contexts(first: 100, after: $after) {
-                    totalCount
-                    pageInfo { hasNextPage endCursor }
-                    nodes {
-                      __typename
-                      ... on CheckRun { status conclusion }
-                      ... on StatusContext { state }
-                    }
-                  }
-                }
-              }
-            }
           }
         }
       }
