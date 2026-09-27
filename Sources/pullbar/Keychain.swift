@@ -30,8 +30,7 @@ enum Keychain {
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
         guard status == errSecSuccess, let data = item as? Data else { return nil }
-        let token = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
-        return token.isEmpty ? nil : token
+        return normalizedToken(String(decoding: data, as: UTF8.self))
     }
 
     static func writeToken(_ token: String, service: String = defaultService) throws {
@@ -60,5 +59,11 @@ enum Keychain {
         }
         deleteToken(service: legacy)
         return token
+    }
+
+    /// Trims whitespace; an empty token counts as no token.
+    static func normalizedToken(_ raw: String) -> String? {
+        let token = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return token.isEmpty ? nil : token
     }
 }

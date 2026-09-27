@@ -134,7 +134,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             statusTitleIsStale = true
             return
         }
-        guard let button = statusItem.button else { return }
+        guard let button = statusItem.button,
+              let text = Self.statusText(inbox: inbox, error: lastError) else { return }
+        button.title = text.title
+        button.toolTip = text.toolTip
+    }
+
+    /// The menu bar title and tooltip, or nil to leave them unchanged while
+    /// the first refresh is still in progress.
+    static func statusText(inbox: Inbox?, error: Error?) -> (title: String, toolTip: String?)? {
         if let inbox {
             let mine = inbox.count(.needsYourReview)
             let teams = inbox.count(.needsTeamsReview)
@@ -142,21 +150,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             var title = mine > 0 || teams > 0 ? "\(mine)" : ""
             if teams > 0 { title += "+\(teams)" }
             if action > 0 { title += (title.isEmpty ? "" : " ") + "⚠︎\(action)" }
-            button.title = title
             var toolTip = InboxSection.allCases
                 .map { "\($0.title): \(inbox.count($0))" }
                 .joined(separator: "\n")
             if let usage = inbox.apiUsage, usage.isLow {
                 toolTip += "\n" + Self.apiUsageText(usage)
             }
-            button.toolTip = toolTip
-            if lastError != nil {
-                button.title = (title.isEmpty ? "" : title + " ") + "!"
+            if error != nil {
+                title = (title.isEmpty ? "" : title + " ") + "!"
             }
-        } else if lastError != nil {
-            button.title = "!"
-            button.toolTip = lastError?.localizedDescription
+            return (title, toolTip)
         }
+        if let error { return ("!", error.localizedDescription) }
+        return nil
     }
 
     /// "API 627 of 5,000 used, resets 14:05"; says the budget is low when less
@@ -585,3 +591,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         s.count <= max ? s : String(s.prefix(max - 1)) + "…"
     }
 }
+
+#if DEBUG
+// Test access to private state and helpers. Only in debug builds, which
+// `swift test` uses; release builds (make app) leave it out.
+extension AppDelegate {
+    var menuForTesting: NSMenu { menu }
+    var inboxForTesting: Inbox? {
+        get { inbox }
+        set { inbox = newValue }
+    }
+    var lastErrorForTesting: Error? {
+        get { lastError }
+        set { lastError = newValue }
+    }
+    func rebuildMenuForTesting() { rebuildMenu() }
+    func intervalLabelForTesting(_ seconds: TimeInterval) -> String { intervalLabel(seconds) }
+    func truncateForTesting(_ s: String, to max: Int) -> String { truncate(s, to: max) }
+
+    var menuIsOpenForTesting: Bool { menuIsOpen }
+    func renderForTesting() { render() }
+    var statusTitleForTesting: String? { statusItem?.button?.title }
+    func installStatusItemForTesting() {
+        _ = NSApplication.shared
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+    }
+    var timerForTesting: Timer? { timer }
+    func scheduleTimerForTesting() { scheduleTimer() }
+    func removeStatusItemForTesting() {
+        if let statusItem { NSStatusBar.system.removeStatusItem(statusItem) }
+        statusItem = nil
+    }
+}
+#endif

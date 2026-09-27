@@ -8,11 +8,19 @@ let package = Package(
         .executableTarget(
             name: "pullbar",
             path: "Sources/pullbar",
+            swiftSettings: [
+                .define("DEBUG", .when(configuration: .debug)),
+            ],
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("Security"),
                 .linkedFramework("ServiceManagement"),
             ]
+        ),
+        .testTarget(
+            name: "pullbarTests",
+            dependencies: ["pullbar"],
+            path: "Tests/pullbarTests"
         ),
     ]
 )
