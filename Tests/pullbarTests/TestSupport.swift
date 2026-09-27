@@ -58,10 +58,13 @@ final class StubGitHub: URLProtocol {
     private static let lock = NSLock()
     nonisolated(unsafe) private static var handler: Handler?
     nonisolated(unsafe) private static var recorded: [Request] = []
+    nonisolated(unsafe) private static var headers: [String: String] = [:]
 
-    static func install(_ handler: @escaping Handler) {
+    /// `headers` are sent with every response, e.g. rate-limit headers.
+    static func install(headers: [String: String] = [:], _ handler: @escaping Handler) {
         lock.withLock {
             self.handler = handler
+            self.headers = headers
             recorded = []
         }
     }
@@ -86,9 +89,9 @@ final class StubGitHub: URLProtocol {
             headers: request.allHTTPHeaderFields ?? [:],
             json: json
         )
-        let handler = Self.lock.withLock { () -> Handler? in
+        let (handler, headers) = Self.lock.withLock { () -> (Handler?, [String: String]) in
             Self.recorded.append(recordedRequest)
-            return Self.handler
+            return (Self.handler, Self.headers)
         }
         let (status, payload) = handler?(recordedRequest) ?? (500, "no stub installed")
         let data: Data
@@ -97,7 +100,7 @@ final class StubGitHub: URLProtocol {
         } else {
             data = (try? JSONSerialization.data(withJSONObject: payload)) ?? Data()
         }
-        let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: nil)!
+        let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: headers)!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: data)
         client?.urlProtocolDidFinishLoading(self)
