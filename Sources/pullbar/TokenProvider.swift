@@ -2,15 +2,19 @@ import AppKit
 import Foundation
 
 /// Ensures standard paste works even though pullbar has no main Edit menu.
-private final class TokenTextField: NSSecureTextField {
+final class TokenTextField: NSSecureTextField {
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        let isPaste = event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command
-            && event.charactersIgnoringModifiers?.lowercased() == "v"
-        if isPaste {
+        if Self.isPaste(flags: event.modifierFlags, characters: event.charactersIgnoringModifiers) {
             currentEditor()?.paste(nil)
             return true
         }
         return super.performKeyEquivalent(with: event)
+    }
+
+    /// Cmd-V and nothing else. Only the modifier keys count, so Caps Lock (and
+    /// the function and keypad flags) cannot stop a paste.
+    static func isPaste(flags: NSEvent.ModifierFlags, characters: String?) -> Bool {
+        flags.intersection([.command, .shift, .option, .control]) == .command && characters?.lowercased() == "v"
     }
 }
 
