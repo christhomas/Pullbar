@@ -1,11 +1,11 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # Print Markdown release notes for a tag: every pull request merged into main
 # since the previous semver tag, with its title, link, author, and description.
 #
 # Usage: scripts/release-notes.sh <tag>
 # Needs git history with tags and an authenticated `gh`. REPO defaults to
 # lucaspal/Pullbar; the release workflow sets it to the current repository.
-set -eu
+set -euo pipefail
 
 TAG="${1:?usage: scripts/release-notes.sh <tag>}"
 REPO="${REPO:-lucaspal/Pullbar}"
@@ -18,11 +18,14 @@ else
 fi
 
 # A commit can belong to several pull requests, and a pull request has many
-# commits, so collect the numbers first and de-duplicate them.
+# commits, so collect the numbers first and de-duplicate them. On a fork the
+# API also returns the parent repository's pull requests, so keep only those
+# merged into this repository.
+REPO_LOWER="$(printf '%s' "$REPO" | tr '[:upper:]' '[:lower:]')"
 PRS="$(
     for sha in $(git rev-list "$RANGE"); do
         gh api "repos/$REPO/commits/$sha/pulls" \
-            --jq '.[] | select(.merged_at != null and .base.ref == "main") | .number'
+            --jq ".[] | select(.merged_at != null and .base.ref == \"main\" and (.base.repo.full_name | ascii_downcase) == \"$REPO_LOWER\") | .number"
     done | sort -un
 )"
 
@@ -39,16 +42,17 @@ if [ -z "$PRS" ]; then
 fi
 
 for number in $PRS; do
-    gh pr view "$number" --repo "$REPO" \
+    entry="$(gh pr view "$number" --repo "$REPO" \
         --json number,title,url,author,mergedAt,body \
         --template '## [{{.title}}]({{.url}}) (#{{.number}})
 
 By @{{.author.login}}, merged {{timefmt "2006-01-02" .mergedAt}}.
 
 {{.body}}
-' |
-        # Demote the description's own headings below the pull request
-        # heading, leaving fenced code blocks alone.
+')"
+    # Demote the description's own headings below the pull request heading,
+    # leaving fenced code blocks alone.
+    printf '%s\n' "$entry" |
         awk '/^```/ { fence = !fence } !fence && /^#+ / && NR > 1 { $0 = "#" $0 } { print }'
     echo
 done
