@@ -284,13 +284,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func launchAtLoginItem() -> NSMenuItem {
-        let item = makeItem("Launch at login", #selector(toggleLaunchAtLogin))
-        let isBundle = Bundle.main.bundleURL.pathExtension == "app"
-        item.isEnabled = isBundle
-        item.state = isBundle && SMAppService.mainApp.status == .enabled ? .on : .off
-        if !isBundle {
-            item.toolTip = "Available when running the packaged pullbar.app (see make app)."
+        switch LaunchAtLoginMode.current {
+        case .available(let enabled):
+            let item = makeItem("Launch at login", #selector(toggleLaunchAtLogin))
+            item.state = enabled ? .on : .off
+            return item
+        case .needsApproval:
+            let item = makeItem("Launch at login: allow in System Settings…", #selector(openLoginItemsSettings))
+            item.toolTip = "pullbar is switched off in System Settings > General > Login Items. Switch it on there."
+            return item
+        case .moveToApplications:
+            return disabledItem(
+                "Launch at login: move pullbar to Applications first",
+                toolTip: "macOS is running this download from a temporary folder. Move pullbar.app to Applications and open it from there."
+            )
+        case .managedByHomebrew:
+            return disabledItem(
+                "Launch at login: use brew services",
+                toolTip: "Installed by a Homebrew formula. Run: brew services start pullbar"
+            )
+        case .unavailable:
+            return disabledItem(
+                "Launch at login",
+                toolTip: "Only available in the app bundle: run make install, or use the release app."
+            )
         }
+    }
+
+    private func disabledItem(_ title: String, toolTip: String) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        item.isEnabled = false
+        item.toolTip = toolTip
         return item
     }
 
@@ -343,11 +367,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 try service.unregister()
             } else {
                 try service.register()
+                // Registered but switched off in System Settings: only the
+                // user can allow it, so take them there.
+                if service.status == .requiresApproval {
+                    SMAppService.openSystemSettingsLoginItems()
+                }
             }
         } catch {
             lastError = error
             render()
         }
+    }
+
+    @objc private func openLoginItemsSettings() {
+        SMAppService.openSystemSettingsLoginItems()
     }
 
     @objc private func quit() {
