@@ -1,0 +1,11 @@
+# Keeps the GitHub Actions used by .github/workflows up to date. The app has
+# no package dependencies, so actions are the only ecosystem to watch.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
