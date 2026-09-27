@@ -1,0 +1,38 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: swift --version
+
+      - name: Build app bundle
+        run: make app
+
+      - name: Verify code signature
+        run: codesign --verify --verbose build/pullbar.app
+
+      - name: Zip app bundle
+        run: ditto -c -k --keepParent build/pullbar.app build/pullbar.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pullbar-app
+          path: build/pullbar.zip
+          if-no-files-found: error
