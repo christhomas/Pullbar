@@ -137,6 +137,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             menu.addItem(.separator())
         }
 
+        let columns = columnLayout(for: InboxSection.allCases.flatMap { inbox?.pullRequests(in: $0) ?? [] })
         for section in InboxSection.allCases {
             let prs = inbox?.pullRequests(in: section) ?? []
             menu.addItem(sectionHeader(section.title, count: inbox == nil ? nil : prs.count))
@@ -147,7 +148,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 menu.addItem(empty)
             }
             for pr in prs {
-                menu.addItem(pullRequestItem(pr))
+                menu.addItem(pullRequestItem(pr, columns: columns))
             }
             menu.addItem(.separator())
         }
@@ -198,7 +199,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return item
     }
 
-    private func pullRequestItem(_ pr: PullRequest) -> NSMenuItem {
+    private func pullRequestItem(_ pr: PullRequest, columns: MenuColumns) -> NSMenuItem {
         let item = NSMenuItem(title: pr.title, action: #selector(openPullRequest(_:)), keyEquivalent: "")
         item.target = self
         item.representedObject = pr.url
@@ -209,8 +210,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         item.image = NSImage(systemSymbolName: "arrow.triangle.pull", accessibilityDescription: nil)?
             .withSymbolConfiguration(.init(paletteColors: [symbolColor]))
 
-        let meta = NSMutableAttributedString(
-            string: "\(pr.repository)#\(pr.number) · \(pr.author) · updated \(relative.localizedString(for: pr.updatedAt, relativeTo: Date()))    ",
+        item.attributedTitle = twoLines(rowTitle(pr), columns.line(statusColumns(pr)))
+        return item
+    }
+
+    private func columnLayout(for prs: [PullRequest]) -> MenuColumns {
+        MenuColumns(
+            rows: prs.map(statusColumns),
+            titles: prs.map { NSAttributedString(string: rowTitle($0), attributes: titleAttributes()) }
+        )
+    }
+
+    private func rowTitle(_ pr: PullRequest) -> String {
+        truncate(pr.title, to: 96)
+    }
+
+    #if DEBUG // test access; release builds leave it out
+    func statusColumnsForTesting(_ pr: PullRequest) -> [NSAttributedString] { statusColumns(pr) }
+    #endif
+
+    /// The second line of a pull request row, as columns: details, review
+    /// status, checks, conflicts, and comments. Empty when not applicable.
+    private func statusColumns(_ pr: PullRequest) -> [NSAttributedString] {
+        let details = NSAttributedString(
+            string: "\(pr.repository)#\(pr.number) · \(pr.author) · updated \(relative.localizedString(for: pr.updatedAt, relativeTo: Date()))",
             attributes: secondaryAttributes()
         )
 
@@ -225,9 +248,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             case nil: statusColor = .secondaryLabelColor
             }
         }
-        meta.append(NSAttributedString(string: "● ", attributes: secondaryAttributes(color: statusColor)))
-        meta.append(NSAttributedString(string: "\(pr.reviewStatusLabel)    ", attributes: secondaryAttributes()))
+        let review = NSMutableAttributedString(string: "● ", attributes: secondaryAttributes(color: statusColor))
+        review.append(NSAttributedString(string: pr.reviewStatusLabel, attributes: secondaryAttributes()))
 
+        let checksColumn = NSMutableAttributedString()
         if let checks = pr.checks {
             let glyph: String
             let color: NSColor
@@ -238,16 +262,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             } else {
                 glyph = "✓"; color = .systemGreen
             }
-            meta.append(NSAttributedString(string: "\(glyph) ", attributes: secondaryAttributes(color: color)))
-            meta.append(NSAttributedString(string: "\(checks.passed)/\(checks.total)    ", attributes: secondaryAttributes()))
+            checksColumn.append(NSAttributedString(string: "\(glyph) ", attributes: secondaryAttributes(color: color)))
+            checksColumn.append(NSAttributedString(string: "\(checks.passed)/\(checks.total)", attributes: secondaryAttributes()))
         }
-        if pr.mergeable == .conflicting {
-            meta.append(NSAttributedString(string: "⚠︎ conflicts    ", attributes: secondaryAttributes(color: .systemOrange)))
-        }
-        meta.append(NSAttributedString(string: "💬 \(pr.commentCount)", attributes: secondaryAttributes()))
 
-        item.attributedTitle = twoLines(truncate(pr.title, to: 96), meta)
-        return item
+        let conflicts = pr.mergeable == .conflicting
+            ? NSAttributedString(string: "⚠︎ conflicts", attributes: secondaryAttributes(color: .systemOrange))
+            : NSAttributedString()
+
+        let comments = NSAttributedString(string: "💬 \(pr.commentCount)", attributes: secondaryAttributes())
+
+        return [details, review, checksColumn, conflicts, comments]
     }
 
     // MARK: Settings submenus
@@ -370,11 +395,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         [.font: NSFont.menuFont(ofSize: 11), .foregroundColor: color]
     }
 
+    private func titleAttributes() -> [NSAttributedString.Key: Any] {
+        [.font: NSFont.menuFont(ofSize: 13), .foregroundColor: NSColor.labelColor]
+    }
+
     private func twoLines(_ first: String, _ second: NSAttributedString) -> NSAttributedString {
-        let text = NSMutableAttributedString(
-            string: first + "\n",
-            attributes: [.font: NSFont.menuFont(ofSize: 13), .foregroundColor: NSColor.labelColor]
-        )
+        let text = NSMutableAttributedString(string: first + "\n", attributes: titleAttributes())
         text.append(second)
         return text
     }
