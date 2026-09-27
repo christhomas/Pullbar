@@ -47,7 +47,7 @@ git commit --quiet -m "Release $TAG"
 
 echo "Prepared release/$TAG:"
 echo
-git show --stat --format='  %s' HEAD | sed 's/^/  /'
+git show --stat --format='%s' HEAD | sed 's/^/  /'
 echo
 echo "Next steps:"
 echo "  1. git push -u $REMOTE release/$TAG"
