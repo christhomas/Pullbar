@@ -21,6 +21,7 @@ app: build $(APP_ICON)
 	cp .build/release/pullbar "$(APP)/Contents/MacOS/pullbar"
 	cp Packaging/Info.plist "$(APP)/Contents/Info.plist"
 	cp "$(APP_ICON)" "$(APP)/Contents/Resources/AppIcon.icns"
+	sh Packaging/stamp-build-info.sh "$(APP)/Contents/Info.plist"
 	echo -n "APPL????" > "$(APP)/Contents/PkgInfo"
 	codesign --force --sign - --identifier dev.pullbar.menubar "$(APP)"
 	@echo "Built $(APP)"

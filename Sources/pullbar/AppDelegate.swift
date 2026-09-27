@@ -125,6 +125,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func rebuildMenu() {
         menu.removeAllItems()
 
+        menu.addItem(titleItem(info: Bundle.main.infoDictionary))
+        menu.addItem(.separator())
+
         if let error = lastError {
             let item = NSMenuItem(title: "", action: nil, keyEquivalent: "")
             item.attributedTitle = twoLines(
@@ -377,6 +380,57 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         )
         text.append(second)
         return text
+    }
+
+    /// "PullBar version 1.2.3" from the bundle's Info.plist; a bare `swift run`
+    /// binary has no bundle version.
+    static func versionTitle(info: [String: Any]?) -> String {
+        guard let version = info?["CFBundleShortVersionString"] as? String, !version.isEmpty else {
+            return "PullBar development build"
+        }
+        return "PullBar version \(version)"
+    }
+
+    /// Where the build came from, as stamped by Packaging/stamp-build-info.sh:
+    /// the `git describe` output and the repository URL. Either can be missing.
+    static func buildOrigin(info: [String: Any]?) -> (description: String?, repository: URL?) {
+        let description = (info?["PullbarBuildDescription"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+        let repository = (info?["PullbarSourceRepository"] as? String).flatMap(URL.init(string:))
+        return (description, repository)
+    }
+
+    /// The first menu row: name and version, and on a second line the build
+    /// description and repository. Clicking it opens the repository.
+    private func titleItem(info: [String: Any]?) -> NSMenuItem {
+        let title = Self.versionTitle(info: info)
+        let origin = Self.buildOrigin(info: info)
+        let details = [origin.description, origin.repository.map { ($0.host ?? "") + $0.path }]
+            .compactMap { $0 }
+            .joined(separator: " · ")
+
+        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        let text = NSMutableAttributedString(
+            string: title,
+            attributes: [.font: NSFont.boldSystemFont(ofSize: 13), .foregroundColor: NSColor.labelColor]
+        )
+        if !details.isEmpty {
+            text.append(NSAttributedString(string: "\n" + details, attributes: secondaryAttributes()))
+        }
+        item.attributedTitle = text
+        if let repository = origin.repository {
+            item.action = #selector(openBuildRepository(_:))
+            item.target = self
+            item.representedObject = repository
+            item.toolTip = "Open \(repository.absoluteString)"
+        } else {
+            item.isEnabled = false
+        }
+        return item
+    }
+
+    @objc private func openBuildRepository(_ sender: NSMenuItem) {
+        guard let url = sender.representedObject as? URL else { return }
+        NSWorkspace.shared.open(url)
     }
 
     private func truncate(_ s: String, to max: Int) -> String {
