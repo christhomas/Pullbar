@@ -7,10 +7,10 @@ Each [GitHub release](https://github.com/lucaspal/Pullbar/releases) has the
 full notes: the title, author, and description of every pull request merged
 since the previous release. This file is the short summary.
 
-When you cut a release, move the **Unreleased** entries under a new heading
-for the version, for example `## [1.0.0] - 2026-10-01`, merge that change to
-`main`, then tag the merge commit. `scripts/release-notes.sh <tag>` prints the
-full notes if you want to check them first.
+Add notable changes under **Unreleased** as you go; this is optional, since
+each release also lists its merged pull requests. `scripts/create-release.sh`
+turns Unreleased into the release entry and adds that list; `AGENTS.md`
+describes the release steps. Keep **Unreleased** as the first entry.
 
 ## Unreleased
 
@@ -20,7 +20,8 @@ full notes if you want to check them first.
   push to `main` and every pull request, and publishes a GitHub release with
   the app zip when a `vX.Y.Z` tag is pushed on `main`.
 - `make app VERSION=X.Y.Z` stamps the version into the app bundle.
-- This changelog.
+- `CHANGELOG.md`, with the two newest entries repeated at the end of the
+  README.
 - MIT license ([#3](https://github.com/lucaspal/Pullbar/pull/3)).
 
 ### Changed
