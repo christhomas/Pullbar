@@ -135,7 +135,7 @@ count include every context GitHub returns for that rollup.
 | `Makefile` | Build, bundle, install, and clean targets. |
 | `scripts/create-release.sh` | Prepares a release branch: changelog entry and README section. |
 | `scripts/release-notes.sh` | Lists the pull requests merged since the previous tag, for release notes and the changelog. |
-| `scripts/changelog.py` | Edits `CHANGELOG.md` and the README changelog section. |
+| `scripts/changelog.sh` | Edits `CHANGELOG.md` and the README changelog section. |
 | `.github/workflows/build.yml` | CI build and tag-triggered GitHub release. |
 | `CHANGELOG.md` | Summary of changes per release. |
 | `LICENSE` | MIT license terms. |

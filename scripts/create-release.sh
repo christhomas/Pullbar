@@ -41,7 +41,7 @@ trap 'rm -f "$SUMMARY"' EXIT
 REPO="$REPO" scripts/release-notes.sh --summary HEAD > "$SUMMARY"
 
 git switch --quiet -c "release/$TAG"
-scripts/changelog.py release "${TAG#v}" "$REPO" "$SUMMARY"
+scripts/changelog.sh release "${TAG#v}" "$REPO" "$SUMMARY"
 git add CHANGELOG.md README.md
 git commit --quiet -m "Release $TAG"
 

@@ -36,17 +36,17 @@ else
     RANGE="$REF"
 fi
 
-# A commit can belong to several pull requests, and a pull request has many
-# commits, so collect the numbers first and de-duplicate them. On a fork the
-# API also returns the parent repository's pull requests, so keep only those
-# merged into this repository.
-REPO_LOWER="$(printf '%s' "$REPO" | tr '[:upper:]' '[:lower:]')"
+# A pull request belongs to this release when its merge commit is in RANGE.
+# Merge commits are recorded as soon as a pull request merges, unlike the
+# commit-to-pull-request lookup, which can lag behind by a few seconds.
 COMMITS="$(git rev-list "$RANGE")"
 PRS="$(
-    for sha in $COMMITS; do
-        gh api "repos/$REPO/commits/$sha/pulls" \
-            --jq ".[] | select(.merged_at != null and .base.ref == \"main\" and (.base.repo.full_name | ascii_downcase) == \"$REPO_LOWER\" and (.head.ref | startswith(\"release/\") | not)) | .number"
-    done | sort -un
+    gh pr list --repo "$REPO" --base main --state merged --limit 1000 \
+        --json number,headRefName,mergeCommit \
+        --jq '.[] | select(.headRefName | startswith("release/") | not) | "\(.mergeCommit.oid) \(.number)"' |
+        while read -r sha number; do
+            if grep -qxF "$sha" <<< "$COMMITS"; then echo "$number"; fi
+        done | sort -n
 )"
 
 if $SUMMARY; then
