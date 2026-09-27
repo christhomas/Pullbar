@@ -46,9 +46,12 @@ $(APP_ICON): Packaging/AppIcon-1024.png Packaging/build-icon.sh
 	mkdir -p "$(BUILD_DIR)"
 	sh Packaging/build-icon.sh "$<" "$@"
 
-## Copy the app to ~/Applications and launch it
+## Copy the app to ~/Applications and launch it. Also quits and removes
+## PR Inbox, pullbar's former name, so its login item can't start it again.
 install: app
 	mkdir -p "$(HOME)/Applications"
+	pkill -x PRInbox || true
+	rm -rf "$(HOME)/Applications/PR Inbox.app"
 	rm -rf "$(HOME)/Applications/$(APP_NAME).app"
 	cp -R "$(APP)" "$(HOME)/Applications/"
 	open "$(HOME)/Applications/$(APP_NAME).app"
