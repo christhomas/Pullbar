@@ -51,6 +51,8 @@ MUTATIONS=(
     "Sources/pullbar/InboxService.swift@@s/\"archived:false\", //@@archived repositories included"
     "Sources/pullbar/Keychain.swift@@s/return token\.isEmpty \? nil : token/return token/@@empty token treated as a token"
     "Sources/pullbar/Keychain.swift@@s/deleteToken\(service: service\)\n        var attrs/var attrs/@@writing over an existing token fails"
+    "Sources/pullbar/Keychain.swift@@s/deleteToken\(service: legacy\)//@@the PR Inbox token is kept after moving it"
+    "Sources/pullbar/Keychain.swift@@s/guard let token = readToken\(service: legacy\)/guard let token = readToken(service: service)/@@the PR Inbox token is not found"
     "Sources/pullbar/TokenProvider.swift@@s/== \.command \&\&/!= [] \&\&/@@any modifier pastes"
     "Sources/pullbar/TokenProvider.swift@@s/intersection\(\[\.command, \.shift, \.option, \.control\]\)/intersection(.deviceIndependentFlagsMask)/@@Caps Lock stops Cmd-V from pasting"
     "Sources/pullbar/TokenProvider.swift@@s/guard process\.terminationStatus == 0 else \{ return nil \}//@@a failing gh command still gives a token"

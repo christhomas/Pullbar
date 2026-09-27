@@ -48,7 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func bootstrapToken() async {
-        if let stored = Keychain.readToken() {
+        if let stored = Keychain.readToken() ?? Keychain.migrateToken() {
             token = stored
         } else if let fromGh = await TokenProvider.fromGhCLI() {
             token = fromGh
