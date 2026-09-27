@@ -46,13 +46,14 @@ final class GitHubClient: @unchecked Sendable {
     }
 
     /// Runs a GitHub issue search (`is:pr` is added) and returns all open PRs
-    /// it finds, paging up to `maxPages` × 50.
+    /// it finds, paging up to `maxPages` × 100 (100 is GitHub's maximum page size,
+    /// and costs no more than 50).
     func searchPullRequests(_ query: String, maxPages: Int = 4) async throws -> SearchResult {
         var cursor: String? = nil
         var raw: [GQL.PullRequest] = []
         var viewer = ""
         for _ in 0..<maxPages {
-            let vars: [String: Any?] = ["q": "is:pr \(query)", "first": 50, "after": cursor]
+            let vars: [String: Any?] = ["q": "is:pr \(query)", "first": 100, "after": cursor]
             let data: GQL.SearchData = try await post(GQL.searchQuery, variables: vars)
             viewer = data.viewer.login
             raw.append(contentsOf: data.search.nodes.compactMap { $0 })
