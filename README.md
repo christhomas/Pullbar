@@ -1,5 +1,10 @@
 # pullbar
 
+[![Build](https://github.com/lucaspal/Pullbar/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/lucaspal/Pullbar/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/lucaspal/Pullbar?include_prereleases&sort=semver)](https://github.com/lucaspal/Pullbar/releases)
+[![License: MIT](https://img.shields.io/github/license/lucaspal/Pullbar)](LICENSE)
+![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue)
+
 pullbar is a native macOS menu bar app for checking your open GitHub pull
 requests without opening a browser. It reads GitHub's GraphQL API and presents
 six inbox-style sections in a menu-bar popover. It has no Dock icon or main
@@ -60,6 +65,7 @@ macOS may ask you to confirm its first launch.
 | `make build` | Builds the release executable in `.build/release/`. |
 | `make run` | Builds and runs the release executable directly, without an app bundle. |
 | `make app` | Creates the ad-hoc-signed `build/pullbar.app` bundle. |
+| `make app VERSION=1.2.3` | Same, with `1.2.3` as the app version (used by the release workflow). |
 | `make install` | Creates the bundle, copies it to `~/Applications`, and opens it. |
 | `make clean` | Removes `.build` and `build`. |
 
@@ -128,8 +134,53 @@ count include every context GitHub returns for that rollup.
 | `Sources/pullbar/Settings.swift` | `UserDefaults` settings. |
 | `Packaging/` | App metadata and icon-build script. |
 | `Makefile` | Build, bundle, install, and clean targets. |
+| `scripts/create-release.sh` | Prepares a release branch: changelog entry and README section. |
+| `scripts/release-notes.sh` | Lists the pull requests merged since the previous tag, for release notes and the changelog. |
+| `scripts/changelog.sh` | Edits `CHANGELOG.md` and the README changelog section. |
+| `.github/workflows/build.yml` | CI build and tag-triggered GitHub release. |
+| `CHANGELOG.md` | Summary of changes per release. |
 | `LICENSE` | MIT license terms. |
 
 ## License
 
 pullbar is available under the [MIT License](LICENSE).
+
+## Changelog
+
+The two most recent entries from [CHANGELOG.md](CHANGELOG.md). See that file
+for older versions, and the
+[GitHub releases](https://github.com/lucaspal/Pullbar/releases) page for the
+full notes (one entry per merged pull request) and a downloadable
+`pullbar.app` zip.
+
+Releases are built only from `main`. `scripts/create-release.sh v1.2.0`
+prepares the changelog and this section on a release branch; after that
+branch is merged, pushing the `v1.2.0` tag on `main` makes the **Build**
+workflow build, sign, and publish the release. See `AGENTS.md` for the steps.
+
+<!-- changelog:start -->
+
+### Unreleased
+
+#### Added
+
+- GitHub Actions workflow that builds and signature-checks the app on every
+  push to `main` and every pull request, and publishes a GitHub release with
+  the app zip when a `vX.Y.Z` tag is pushed on `main`.
+- `scripts/create-release.sh vX.Y.Z` prepares a release branch with the
+  `CHANGELOG.md` entry, a list of the pull requests merged since the previous
+  tag, and the README changelog section. No dependencies beyond git, `gh`,
+  bash, and awk.
+- `make app VERSION=X.Y.Z` stamps the version into the app bundle.
+- `CHANGELOG.md`, with the two newest entries repeated at the end of the
+  README.
+- MIT license ([#3](https://github.com/lucaspal/Pullbar/pull/3)).
+
+#### Changed
+
+- Renamed the project from "PR Inbox" to "pullbar": package, bundle
+  identifier, sources, Keychain item, and docs
+  ([#1](https://github.com/lucaspal/Pullbar/pull/1),
+  [#2](https://github.com/lucaspal/Pullbar/pull/2)).
+
+<!-- changelog:end -->
