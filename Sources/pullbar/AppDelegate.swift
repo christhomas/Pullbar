@@ -128,6 +128,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return
         }
         guard let button = statusItem.button else { return }
+        guard let text = Self.statusText(inbox: inbox, error: lastError) else { return }
+        button.title = text.title
+        button.toolTip = text.toolTip
+    }
+
+    /// The menu bar title and tooltip, or nil to leave them as they are (no
+    /// data and no error yet). Title: your review requests, "+teams" when
+    /// there are team requests, "⚠︎n" for pull requests needing action, and
+    /// "!" when the last refresh failed.
+    static func statusText(inbox: Inbox?, error: Error?) -> (title: String, toolTip: String?)? {
         if let inbox {
             let mine = inbox.count(.needsYourReview)
             let teams = inbox.count(.needsTeamsReview)
@@ -135,17 +145,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             var title = mine > 0 || teams > 0 ? "\(mine)" : ""
             if teams > 0 { title += "+\(teams)" }
             if action > 0 { title += (title.isEmpty ? "" : " ") + "⚠︎\(action)" }
-            button.title = title
-            button.toolTip = InboxSection.allCases
+            if error != nil { title = (title.isEmpty ? "" : title + " ") + "!" }
+            let toolTip = InboxSection.allCases
                 .map { "\($0.title): \(inbox.count($0))" }
                 .joined(separator: "\n")
-            if lastError != nil {
-                button.title = (title.isEmpty ? "" : title + " ") + "!"
-            }
-        } else if lastError != nil {
-            button.title = "!"
-            button.toolTip = lastError?.localizedDescription
+            return (title, toolTip)
         }
+        if let error { return ("!", error.localizedDescription) }
+        return nil
     }
 
     // MARK: - NSMenuDelegate
@@ -539,3 +546,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         s.count <= max ? s : String(s.prefix(max - 1)) + "…"
     }
 }
+
+#if DEBUG
+// Test access to private state and helpers. Only in debug builds, which
+// `swift test` uses; release builds (make app) leave it out.
+extension AppDelegate {
+    var menuForTesting: NSMenu { menu }
+    var inboxForTesting: Inbox? {
+        get { inbox }
+        set { inbox = newValue }
+    }
+    var lastErrorForTesting: Error? {
+        get { lastError }
+        set { lastError = newValue }
+    }
+    func rebuildMenuForTesting() { rebuildMenu() }
+    func intervalLabelForTesting(_ seconds: TimeInterval) -> String { intervalLabel(seconds) }
+    func truncateForTesting(_ s: String, to max: Int) -> String { truncate(s, to: max) }
+
+    // Status columns in pull request rows.
+    func statusColumnsForTesting(_ pr: PullRequest) -> [NSAttributedString] { statusColumns(pr) }
+
+    // Fixture mode.
+    func loadFixtureForTesting(_ url: URL) { loadFixture(url) }
+
+    // The title row.
+    func titleItemForTesting(info: [String: Any]?) -> NSMenuItem { titleItem(info: info) }
+
+    // Live menu sync.
+    var menuIsOpenForTesting: Bool { menuIsOpen }
+    var statusTitleIsStaleForTesting: Bool { statusTitleIsStale }
+    func renderForTesting() { render() }
+    var statusTitleForTesting: String? { statusItem?.button?.title }
+    func installStatusItemForTesting() {
+        // The status bar needs AppKit's connection to the window server,
+        // which NSApplication sets up; the real app always has one.
+        _ = NSApplication.shared
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+    }
+    var timerForTesting: Timer? { timer }
+    func scheduleTimerForTesting() { scheduleTimer() }
+    func removeStatusItemForTesting() {
+        if let statusItem { NSStatusBar.system.removeStatusItem(statusItem) }
+        statusItem = nil
+    }
+}
+#endif

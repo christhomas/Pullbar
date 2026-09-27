@@ -66,6 +66,8 @@ macOS may ask you to confirm its first launch.
 |---|---|
 | `make build` | Builds the release executable in `.build/release/`. |
 | `make run` | Builds and runs the release executable directly, without an app bundle. |
+| `make test` | Runs the unit tests. |
+| `make mutation-test` | Checks that the tests catch deliberate bugs. |
 | `make app` | Creates the ad-hoc-signed `build/pullbar.app` bundle. |
 | `make app VERSION=1.2.3` | Same, with `1.2.3` as the app version (used by the release workflow). |
 | `make app SIGN_IDENTITY="Developer ID Application: …"` | Signs with that identity, the hardened runtime, and a secure timestamp instead of ad hoc. |
@@ -149,6 +151,28 @@ For each returned pull request, the app reads the latest commit's
 pull request has more than 100 checks, so the displayed check total and passed
 count include every context GitHub returns for that rollup.
 
+## Testing
+
+```sh
+make test            # or: swift test
+make mutation-test   # or: scripts/mutation-test.sh
+```
+
+The unit tests in `Tests/pullbarTests/` cover the inbox rules (which section a
+pull request lands in, sorting, the review and check labels), the settings,
+reading GitHub's GraphQL responses and errors through a stubbed network, the
+three inbox searches, the Keychain (using a throwaway item, never your
+token), the `gh` token lookup, the menu bar title, and the menu's contents.
+The parts that need a real screen or the system are not unit tested: the
+token prompt, the status bar item itself, opening URLs, and login items.
+
+`make mutation-test` checks that the tests catch real bugs. It applies a list
+of small, deliberate bugs to the code one at a time, such as a flipped
+condition, a wrong label, or a dropped search filter, and runs the tests
+after each. Every one must make a test fail; a bug that goes unnoticed means
+a missing test. When you change logic, add a test for it, and add a mutation
+to `scripts/mutation-test.sh` for any rule the existing ones do not cover.
+
 ## Project layout
 
 | Path | Purpose |
@@ -164,6 +188,8 @@ count include every context GitHub returns for that rollup.
 | `Sources/pullbar/Fixture.swift` | Loads a made-up inbox from JSON (`--fixture`). |
 | `Fixtures/` | Example fixture files. |
 | `Packaging/` | App metadata and icon-build script. |
+| `Tests/pullbarTests/` | Unit tests. |
+| `scripts/mutation-test.sh` | Mutation test: deliberate bugs the tests must catch. |
 | `Makefile` | Build, bundle, install, and clean targets. |
 | `scripts/create-release.sh` | Prepares a release branch: changelog entry and README section. |
 | `scripts/release-notes.sh` | Lists the pull requests merged since the previous tag, for release notes and the changelog. |

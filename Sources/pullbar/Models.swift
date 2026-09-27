@@ -128,7 +128,8 @@ struct Inbox {
         reviewRequested: [PullRequest],
         userReviewRequested: [PullRequest],
         authored: [PullRequest],
-        viewerLogin: String
+        viewerLogin: String,
+        now: Date = Date()
     ) -> Inbox {
         let direct = Set(userReviewRequested.map(\.id))
         let teams = reviewRequested.filter { !direct.contains($0.id) }
@@ -160,7 +161,7 @@ struct Inbox {
                 .readyToMerge: ready.sorted(by: byUpdated),
             ],
             viewerLogin: viewerLogin,
-            fetchedAt: Date()
+            fetchedAt: now
         )
     }
 }
