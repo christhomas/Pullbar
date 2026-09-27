@@ -1,0 +1,3 @@
+Sources/pullbar/AppDelegate.swift@@s/return "PullBar version .\(version\)"/return "PullBar \\(version)"/@@title row wording changed
+Sources/pullbar/AppDelegate.swift@@s/\.joined\(separator: " · "\)\n\n        let item = NSMenuItem\(title: title/.joined(separator: " ")\n\n        let item = NSMenuItem(title: title/@@build details run together
+Sources/pullbar/AppDelegate.swift@@s/            item\.isEnabled = false\n        \}\n        return item\n    \}\n\n    \@objc private func openBuildRepository/        }\n        return item\n    }\n\n    \@objc private func openBuildRepository/@@title row without a repository is clickable
