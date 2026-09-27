@@ -110,10 +110,26 @@ enum InboxSection: CaseIterable {
     }
 }
 
+/// GitHub's GraphQL budget after the last refresh, and what that refresh cost.
+struct APIUsage: Equatable {
+    let limit: Int
+    let remaining: Int
+    let resetAt: Date
+    /// Points and requests the last refresh used.
+    let lastRefreshCost: Int
+    let lastRefreshRequests: Int
+
+    var used: Int { limit - remaining }
+    /// Less than 10% of the budget left.
+    var isLow: Bool { remaining * 10 < limit }
+}
+
 struct Inbox {
     let sections: [InboxSection: [PullRequest]]
     let viewerLogin: String
     let fetchedAt: Date
+    /// Nil when unknown, e.g. for a fixture.
+    var apiUsage: APIUsage? = nil
 
     func pullRequests(in section: InboxSection) -> [PullRequest] {
         sections[section] ?? []
@@ -147,7 +163,8 @@ struct Inbox {
         userReviewRequested: [PullRequest],
         authored: [PullRequest],
         viewerLogin: String,
-        now: Date = Date()
+        now: Date = Date(),
+        apiUsage: APIUsage? = nil
     ) -> Inbox {
         let direct = Set(userReviewRequested.map(\.id))
         let teams = reviewRequested.filter { !direct.contains($0.id) }
@@ -179,7 +196,8 @@ struct Inbox {
                 .readyToMerge: ready.sorted(by: byUpdated),
             ],
             viewerLogin: viewerLogin,
-            fetchedAt: now
+            fetchedAt: now,
+            apiUsage: apiUsage
         )
     }
 }
