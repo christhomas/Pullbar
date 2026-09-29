@@ -26,6 +26,7 @@ ifneq ($(VERSION),)
 	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(VERSION)" "$(APP)/Contents/Info.plist"
 endif
 	cp "$(APP_ICON)" "$(APP)/Contents/Resources/AppIcon.icns"
+	sh Packaging/stamp-build-info.sh "$(APP)/Contents/Info.plist"
 	echo -n "APPL????" > "$(APP)/Contents/PkgInfo"
 	codesign --force --sign - --identifier dev.pullbar.menubar "$(APP)"
 	@echo "Built $(APP)"
