@@ -47,6 +47,11 @@ struct PullRequest: Identifiable, Hashable {
     let checks: Checks?
     let commentCount: Int
 
+    /// The user or organisation that owns the repository: "acme" for "acme/api".
+    var owner: String {
+        String(repository.split(separator: "/", maxSplits: 1).first ?? Substring(repository))
+    }
+
     var hasFailingChecks: Bool { checks?.isFailing ?? false }
 
     /// Something on the author's side blocks this PR: a review asked for
@@ -132,6 +137,26 @@ struct Inbox {
 
     func count(_ section: InboxSection) -> Int {
         pullRequests(in: section).count
+    }
+
+    /// Pull requests grouped by repository owner, for the menu's subheadings.
+    /// Most recent first: groups are ordered by their most recently updated pull
+    /// request (ties by owner name), and each group lists newest first.
+    static func groupedByOwner(_ prs: [PullRequest]) -> [(owner: String, pullRequests: [PullRequest])] {
+        let newestFirst: (PullRequest, PullRequest) -> Bool = { lhs, rhs in
+            if lhs.updatedAt != rhs.updatedAt { return lhs.updatedAt > rhs.updatedAt }
+            if lhs.repository != rhs.repository {
+                return lhs.repository.localizedStandardCompare(rhs.repository) == .orderedAscending
+            }
+            if lhs.number != rhs.number { return lhs.number < rhs.number }
+            return lhs.id < rhs.id
+        }
+        return Dictionary(grouping: prs, by: \.owner)
+            .map { (owner: $0.key, pullRequests: $0.value.sorted(by: newestFirst)) }
+            .sorted { a, b in
+                let newestA = a.pullRequests[0].updatedAt, newestB = b.pullRequests[0].updatedAt
+                return newestA != newestB ? newestA > newestB : a.owner.localizedStandardCompare(b.owner) == .orderedAscending
+            }
     }
 
     /// Splits the three raw searches into the six inbox sections.

@@ -231,8 +231,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 empty.indentationLevel = 1
                 menu.addItem(empty)
             }
-            for pr in prs {
-                menu.addItem(pullRequestItem(pr, columns: columns))
+            // One subheading per user or organisation, so a long list with
+            // many owners is easy to scan.
+            for group in Inbox.groupedByOwner(prs) {
+                menu.addItem(ownerHeader(group.owner))
+                for pr in group.pullRequests {
+                    menu.addItem(pullRequestItem(pr, columns: columns))
+                }
             }
             menu.addItem(.separator())
         }
@@ -270,6 +275,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(makeItem("Quit pullbar", #selector(quit), key: "q"))
     }
 
+    /// Subheading above a group of pull requests from one user or organisation.
+    /// A custom label stays readable where a disabled menu item would be dimmed.
+    private func ownerHeader(_ owner: String) -> NSMenuItem {
+        let item = NSMenuItem(title: owner, action: nil, keyEquivalent: "")
+        let label = NSTextField(labelWithString: owner)
+        label.font = NSFont.boldSystemFont(ofSize: 12)
+        label.textColor = .labelColor
+        let size = label.fittingSize
+        let view = NSView(frame: NSRect(x: 0, y: 0, width: Self.ownerHeaderInset + size.width + 12, height: size.height + 6))
+        label.frame = NSRect(x: Self.ownerHeaderInset, y: 3, width: size.width, height: size.height)
+        view.addSubview(label)
+        item.view = view
+        return item
+    }
+
+    /// One menu indentation step in from the section headers.
+    static let ownerHeaderInset: CGFloat = 42
+
+    private func ownerAttributes() -> [NSAttributedString.Key: Any] {
+        [.font: NSFont.boldSystemFont(ofSize: 11), .foregroundColor: NSColor.secondaryLabelColor]
+    }
+
     private func sectionHeader(_ title: String, count: Int?) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         let text = NSMutableAttributedString(
@@ -297,7 +324,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let item = NSMenuItem(title: pr.title, action: #selector(openPullRequest(_:)), keyEquivalent: "")
         item.target = self
         item.representedObject = pr.url
-        item.indentationLevel = 1
+        item.indentationLevel = 2
         item.toolTip = "\(pr.repository)#\(pr.number)\n\(pr.title)\n\nClick to open on GitHub"
 
         let symbolColor: NSColor = pr.isDraft ? .secondaryLabelColor : NSColor.systemGreen
@@ -326,10 +353,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// The second line of a pull request row, as columns: details, review
     /// status, checks, conflicts, and comments. Empty when not applicable.
     private func statusColumns(_ pr: PullRequest) -> [NSAttributedString] {
-        let details = NSAttributedString(
-            string: "\(pr.repository)#\(pr.number) · \(pr.author) · updated \(relative.localizedString(for: pr.updatedAt, relativeTo: Date()))",
+        let details = NSMutableAttributedString(string: pr.owner, attributes: ownerAttributes())
+        details.append(NSAttributedString(
+            string: pr.repository.dropFirst(pr.owner.count) + "#\(pr.number) · \(pr.author) · updated \(relative.localizedString(for: pr.updatedAt, relativeTo: Date()))",
             attributes: secondaryAttributes()
-        )
+        ))
 
         let statusColor: NSColor
         if pr.isDraft {

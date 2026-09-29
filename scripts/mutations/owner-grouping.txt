@@ -1,0 +1,6 @@
+Sources/pullbar/Models.swift@@s/newestA != newestB \? newestA > newestB : //@@groups ordered by name, not time
+Sources/pullbar/Models.swift@@s/pullRequests: \$0\.value\.sorted\(by: newestFirst\)/pullRequests: \$0.value/@@groups not newest first inside
+Sources/pullbar/Models.swift@@s/== \.orderedAscending/== .orderedDescending/@@tied owners in reverse order
+Sources/pullbar/AppDelegate.swift@@s/                menu\.addItem\(ownerHeader\(group\.owner\)\)\n//@@no owner subheadings
+Sources/pullbar/AppDelegate.swift@@s/label\.textColor = \.labelColor/label.textColor = .secondaryLabelColor/@@owner subheadings grey again
+Sources/pullbar/AppDelegate.swift@@s/\[\.font: NSFont\.boldSystemFont\(ofSize: 11\), \.foregroundColor: NSColor\.secondaryLabelColor\]/[.font: NSFont.systemFont(ofSize: 11), .foregroundColor: NSColor.secondaryLabelColor]/@@owner not bold in rows
