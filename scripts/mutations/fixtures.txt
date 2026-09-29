@@ -1,0 +1,5 @@
+Sources/pullbar/Fixture.swift@@s/"h": 3600/"h": 60/@@fixture hours read as minutes
+Sources/pullbar/Fixture.swift@@s/mergeable \?\? "MERGEABLE"/mergeable ?? "UNKNOWN"/@@fixture pull requests default to unknown mergeability
+Sources/pullbar/Fixture.swift@@s/userReviewRequested: direct,/userReviewRequested: [],/@@fixture direct requests shown as team requests
+Sources/pullbar/Fixture.swift@@s/index \+ 1 < arguments\.count/index < arguments.count/@@--fixture without a value crashes
+Sources/pullbar/AppDelegate.swift@@s/lastError = fixture\.error\.map/lastError = nil; _ = fixture.error.map/@@fixture error message not shown
