@@ -139,9 +139,10 @@ to update credentials.
 
 ## Data-fetching limits and details
 
-Each refresh starts the three searches concurrently. Each search requests 50
-items per page and reads at most four pages, so a section source is limited to
-200 pull requests per refresh. Search queries include `is:pr`, `is:open`,
+Each refresh starts the three searches concurrently. Each search requests 100
+items per page, the most GitHub allows and no more expensive than 50, and
+reads at most four pages, so a section source is limited to 400 pull requests
+per refresh. Search queries include `is:pr`, `is:open`,
 `archived:false`, `sort:updated-desc`, and the selected updated-time filter.
 
 For each returned pull request, the app reads the latest commit's
