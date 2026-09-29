@@ -9,6 +9,8 @@ enum GitHubError: LocalizedError {
     case http(Int, String)
     case graphQL([String])
     case malformed
+    /// The GraphQL budget is used up until `resetAt` (nil when GitHub did not say).
+    case rateLimited(resetAt: Date?)
 
     var errorDescription: String? {
         switch self {
@@ -17,6 +19,9 @@ enum GitHubError: LocalizedError {
         case .http(let code, let body): return "GitHub returned HTTP \(code): \(body.prefix(200))"
         case .graphQL(let messages): return messages.joined(separator: "\n")
         case .malformed: return "Unexpected response from GitHub."
+        case .rateLimited(let resetAt):
+            guard let resetAt else { return "GitHub API limit reached. Try again later." }
+            return "GitHub API limit reached. It resets at \(resetAt.formatted(date: .omitted, time: .shortened))."
         }
     }
 }
@@ -43,6 +48,11 @@ final class GitHubClient: @unchecked Sendable {
     struct SearchResult {
         let viewerLogin: String
         let pullRequests: [PullRequest]
+        /// GitHub's budget after the last request, and what all requests
+        /// cost: the search pages plus any extra pages of check contexts.
+        var rateLimit: GQL.RateLimit? = nil
+        var cost = 0
+        var requests = 0
     }
 
     /// Runs a GitHub issue search (`is:pr` is added) and returns all open PRs
@@ -51,10 +61,12 @@ final class GitHubClient: @unchecked Sendable {
         var cursor: String? = nil
         var raw: [GQL.PullRequest] = []
         var viewer = ""
+        var usage = Usage()
         for _ in 0..<maxPages {
             let vars: [String: Any?] = ["q": "is:pr \(query)", "first": 50, "after": cursor]
             let data: GQL.SearchData = try await post(GQL.searchQuery, variables: vars)
             viewer = data.viewer.login
+            usage.count(data.rateLimit)
             raw.append(contentsOf: data.search.nodes.compactMap { $0 })
             guard data.search.pageInfo.hasNextPage, let next = data.search.pageInfo.endCursor else { break }
             cursor = next
@@ -62,24 +74,52 @@ final class GitHubClient: @unchecked Sendable {
 
         // Finish counting checks where the first page of 100 contexts was not all of them.
         var prs: [PullRequest] = []
-        try await withThrowingTaskGroup(of: PullRequest?.self) { group in
+        try await withThrowingTaskGroup(of: (PullRequest?, Usage).self) { group in
             for node in raw {
                 group.addTask { try await self.materialize(node) }
             }
-            for try await pr in group {
+            for try await (pr, extra) in group {
                 if let pr { prs.append(pr) }
+                usage.add(extra)
             }
         }
-        return SearchResult(viewerLogin: viewer, pullRequests: prs)
+        return SearchResult(
+            viewerLogin: viewer, pullRequests: prs,
+            rateLimit: usage.rateLimit, cost: usage.cost, requests: usage.requests
+        )
     }
 
     // MARK: - Internals
 
-    private func materialize(_ node: GQL.PullRequest) async throws -> PullRequest? {
+    /// Requests made, the points they cost, and the latest budget GitHub
+    /// reported. Requests run in parallel, so the latest budget is the one
+    /// with the least remaining.
+    private struct Usage {
+        var rateLimit: GQL.RateLimit?
+        var cost = 0
+        var requests = 0
+
+        /// Counts one request and the budget in its response.
+        mutating func count(_ limit: GQL.RateLimit?) {
+            add(Usage(rateLimit: limit, cost: limit?.cost ?? 0, requests: 1))
+        }
+
+        mutating func add(_ other: Usage) {
+            requests += other.requests
+            cost += other.cost
+            if let limit = other.rateLimit, rateLimit.map({ limit.remaining <= $0.remaining }) ?? true {
+                rateLimit = limit
+            }
+        }
+    }
+
+    /// The pull request, plus what fetching its extra check contexts cost.
+    private func materialize(_ node: GQL.PullRequest) async throws -> (PullRequest?, Usage) {
+        var usage = Usage()
         guard let id = node.id, let number = node.number, let title = node.title,
               let url = node.url, let updatedAt = node.updatedAt,
               let repo = node.repository?.nameWithOwner
-        else { return nil }
+        else { return (nil, usage) }
 
         var checks: Checks? = nil
         if let rollup = node.commits?.nodes.first?.commit.statusCheckRollup {
@@ -89,6 +129,7 @@ final class GitHubClient: @unchecked Sendable {
                 let more: GQL.NodeData = try await post(
                     GQL.contextsQuery, variables: ["id": id, "after": after]
                 )
+                usage.count(more.rateLimit)
                 guard let next = more.node?.commits?.nodes.first?.commit.statusCheckRollup?.contexts else { break }
                 contexts.append(contentsOf: next.nodes)
                 page = next.pageInfo
@@ -101,7 +142,7 @@ final class GitHubClient: @unchecked Sendable {
             )
         }
 
-        return PullRequest(
+        let pr = PullRequest(
             id: id,
             number: number,
             title: title,
@@ -115,6 +156,7 @@ final class GitHubClient: @unchecked Sendable {
             checks: checks,
             commentCount: node.comments?.totalCount ?? 0
         )
+        return (pr, usage)
     }
 
     private func post<T: Decodable>(_ query: String, variables: [String: Any?]) async throws -> T {
@@ -129,16 +171,30 @@ final class GitHubClient: @unchecked Sendable {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw GitHubError.malformed }
         if http.statusCode == 401 { throw GitHubError.unauthorized }
+        if let resetAt = Self.rateLimitReset(http) { throw GitHubError.rateLimited(resetAt: resetAt) }
         guard (200..<300).contains(http.statusCode) else {
             throw GitHubError.http(http.statusCode, String(decoding: data, as: UTF8.self))
         }
 
         let envelope = try decoder.decode(GQL.Envelope<T>.self, from: data)
+        if envelope.errors?.contains(where: { $0.type == "RATE_LIMITED" }) == true {
+            throw GitHubError.rateLimited(resetAt: nil)
+        }
         if let errors = envelope.errors, !errors.isEmpty, envelope.data == nil {
             throw GitHubError.graphQL(errors.map(\.message))
         }
         guard let payload = envelope.data else { throw GitHubError.malformed }
         return payload
+    }
+
+    /// When a response says the rate limit is used up (HTTP 403 or 429 with no
+    /// requests remaining), the time it resets; nil for any other response.
+    static func rateLimitReset(_ http: HTTPURLResponse) -> Date?? {
+        guard [403, 429].contains(http.statusCode),
+              http.value(forHTTPHeaderField: "x-ratelimit-remaining") == "0" || http.statusCode == 429
+        else { return nil }
+        let reset = http.value(forHTTPHeaderField: "x-ratelimit-reset").flatMap(TimeInterval.init)
+        return .some(reset.map { Date(timeIntervalSince1970: $0) })
     }
 }
 
@@ -146,7 +202,10 @@ final class GitHubClient: @unchecked Sendable {
 
 enum GQL {
     struct Envelope<T: Decodable>: Decodable {
-        struct Error: Decodable { let message: String }
+        struct Error: Decodable {
+            let message: String
+            var type: String? = nil
+        }
         let data: T?
         let errors: [Error]?
     }
@@ -158,6 +217,16 @@ enum GQL {
 
     struct Viewer: Decodable { let login: String }
 
+    /// GitHub's GraphQL budget: points per hour, what is left, and this
+    /// request's cost.
+    struct RateLimit: Decodable, Equatable {
+        let limit: Int
+        let remaining: Int
+        let used: Int
+        let cost: Int
+        let resetAt: Date
+    }
+
     struct SearchData: Decodable {
         struct Search: Decodable {
             let issueCount: Int
@@ -166,10 +235,12 @@ enum GQL {
         }
         let viewer: Viewer
         let search: Search
+        let rateLimit: RateLimit?
     }
 
     struct NodeData: Decodable {
         let node: PullRequest?
+        let rateLimit: RateLimit?
     }
 
     /// All fields optional: a search node that is not a PullRequest decodes
@@ -261,6 +332,7 @@ enum GQL {
     static let searchQuery = """
     query PullbarSearch($q: String!, $first: Int!, $after: String) {
       viewer { login }
+      rateLimit { limit remaining used cost resetAt }
       search(query: $q, type: ISSUE, first: $first, after: $after) {
         issueCount
         pageInfo { hasNextPage endCursor }
@@ -275,6 +347,7 @@ enum GQL {
 
     static let contextsQuery = """
     query PullbarContexts($id: ID!, $after: String!) {
+      rateLimit { limit remaining used cost resetAt }
       node(id: $id) {
         ... on PullRequest {
           commits(last: 1) {

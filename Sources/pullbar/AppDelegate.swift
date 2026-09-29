@@ -143,9 +143,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if teams > 0 { title += "+\(teams)" }
             if action > 0 { title += (title.isEmpty ? "" : " ") + "⚠︎\(action)" }
             button.title = title
-            button.toolTip = InboxSection.allCases
+            var toolTip = InboxSection.allCases
                 .map { "\($0.title): \(inbox.count($0))" }
                 .joined(separator: "\n")
+            if let usage = inbox.apiUsage, usage.isLow {
+                toolTip += "\n" + Self.apiUsageText(usage)
+            }
+            button.toolTip = toolTip
             if lastError != nil {
                 button.title = (title.isEmpty ? "" : title + " ") + "!"
             }
@@ -153,6 +157,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             button.title = "!"
             button.toolTip = lastError?.localizedDescription
         }
+    }
+
+    /// "API 627 of 5,000 used, resets 14:05"; says the budget is low when less
+    /// than 10% is left.
+    static func apiUsageText(_ usage: APIUsage) -> String {
+        let time = usage.resetAt.formatted(date: .omitted, time: .shortened)
+        return (usage.isLow ? "API budget low: " : "API ")
+            + "\(usage.used.formatted()) of \(usage.limit.formatted()) used, resets \(time)"
+    }
+
+    /// What the last refresh cost, for checking how many requests pullbar makes.
+    static func apiUsageToolTip(_ usage: APIUsage) -> String {
+        let time = usage.resetAt.formatted(date: .omitted, time: .shortened)
+        let requests = usage.lastRefreshRequests == 1 ? "1 request" : "\(usage.lastRefreshRequests) requests"
+        return "The last refresh used \(usage.lastRefreshCost) API points in \(requests). "
+            + "\(usage.remaining.formatted()) of \(usage.limit.formatted()) points are left until \(time), "
+            + "shared with other apps that use the same GitHub token."
     }
 
     // MARK: - NSMenuDelegate
@@ -213,14 +234,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(makeItem("Open inbox on GitHub", #selector(openInbox), key: "o"))
         let refreshItem = makeItem("Refresh now", #selector(refreshNow), key: "r")
         if let inbox {
-            let when = relative.localizedString(for: inbox.fetchedAt, relativeTo: Date())
-            refreshItem.attributedTitle = twoLines(
-                "Refresh now",
-                NSAttributedString(
-                    string: "Updated \(when)" + (inbox.viewerLogin.isEmpty ? "" : " · signed in as \(inbox.viewerLogin)"),
-                    attributes: secondaryAttributes()
-                )
+            let now = Date()
+            // Under a second reads "just now"; the formatter would say "in 0
+            // seconds", since the fetch time can even be a moment ahead of now.
+            let age = now.timeIntervalSince(inbox.fetchedAt)
+            let when = age < 1 ? "just now" : relative.localizedString(fromTimeInterval: -age)
+            let details = NSMutableAttributedString(
+                string: "Updated \(when)" + (inbox.viewerLogin.isEmpty ? "" : " · signed in as \(inbox.viewerLogin)"),
+                attributes: secondaryAttributes()
             )
+            if let usage = inbox.apiUsage {
+                details.append(NSAttributedString(string: " · ", attributes: secondaryAttributes()))
+                details.append(NSAttributedString(
+                    string: Self.apiUsageText(usage),
+                    attributes: secondaryAttributes(color: usage.isLow ? .systemOrange : .secondaryLabelColor)
+                ))
+                refreshItem.toolTip = Self.apiUsageToolTip(usage)
+            }
+            refreshItem.attributedTitle = twoLines("Refresh now", details)
         }
         menu.addItem(refreshItem)
 

@@ -19,7 +19,21 @@ struct InboxService {
             reviewRequested: r.pullRequests,
             userReviewRequested: d.pullRequests,
             authored: a.pullRequests,
-            viewerLogin: a.viewerLogin
+            viewerLogin: a.viewerLogin,
+            apiUsage: Self.apiUsage(of: [r, d, a])
+        )
+    }
+
+    /// The budget left after this refresh (the lowest the searches saw) and
+    /// what the refresh cost in total; nil when GitHub reported no budget.
+    static func apiUsage(of results: [GitHubClient.SearchResult]) -> APIUsage? {
+        guard let lowest = results.compactMap(\.rateLimit).min(by: { $0.remaining < $1.remaining }) else { return nil }
+        return APIUsage(
+            limit: lowest.limit,
+            remaining: lowest.remaining,
+            resetAt: lowest.resetAt,
+            lastRefreshCost: results.reduce(0) { $0 + $1.cost },
+            lastRefreshRequests: results.reduce(0) { $0 + $1.requests }
         )
     }
 }
