@@ -34,11 +34,15 @@ final class GitHubClient: @unchecked Sendable {
     private let session: URLSession
     private let decoder: JSONDecoder
 
-    init(token: String) {
+    init(token: String, session: URLSession? = nil) {
         self.token = token
-        let config = URLSessionConfiguration.ephemeral
-        config.timeoutIntervalForRequest = 30
-        session = URLSession(configuration: config)
+        if let session {
+            self.session = session
+        } else {
+            let config = URLSessionConfiguration.ephemeral
+            config.timeoutIntervalForRequest = 30
+            self.session = URLSession(configuration: config)
+        }
         decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
     }

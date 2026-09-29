@@ -145,6 +145,7 @@ struct Inbox {
         userReviewRequested: [PullRequest],
         authored: [PullRequest],
         viewerLogin: String,
+        now: Date = Date(),
         apiUsage: APIUsage? = nil
     ) -> Inbox {
         let direct = Set(userReviewRequested.map(\.id))
@@ -177,7 +178,7 @@ struct Inbox {
                 .readyToMerge: ready.sorted(by: byUpdated),
             ],
             viewerLogin: viewerLogin,
-            fetchedAt: Date(),
+            fetchedAt: now,
             apiUsage: apiUsage
         )
     }
