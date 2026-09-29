@@ -1,0 +1,3 @@
+Sources/pullbar/AppDelegate.swift@@s/        if menuIsOpen \{\n            rebuildMenu\(\)\n/        if menuIsOpen {\n/@@open menu not updated by a refresh
+Sources/pullbar/AppDelegate.swift@@s/            statusTitleIsStale = true\n            return\n/            return\n/@@menu bar title never updated after the menu closes
+Sources/pullbar/AppDelegate.swift@@s/RunLoop\.main\.add\(timer, forMode: \.common\)/RunLoop.main.add(timer, forMode: .default)/@@refresh timer pauses while the menu is open
