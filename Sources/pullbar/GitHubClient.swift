@@ -21,9 +21,42 @@ enum GitHubError: LocalizedError {
     }
 }
 
+/// A small FIFO limiter shared by all searches using one GitHub client.
+private actor RequestConcurrencyLimiter {
+    private let maximum: Int
+    private var active = 0
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    init(maximum: Int) {
+        self.maximum = maximum
+    }
+
+    func acquire() async {
+        if active < maximum {
+            active += 1
+            return
+        }
+        await withCheckedContinuation { continuation in
+            waiters.append(continuation)
+        }
+    }
+
+    func release() {
+        if waiters.isEmpty {
+            active -= 1
+        } else {
+            waiters.removeFirst().resume()
+        }
+    }
+}
+
 /// Minimal GitHub GraphQL client: one `search` per inbox query, plus paging
 /// of check contexts for PRs with more than 100 checks.
 final class GitHubClient: @unchecked Sendable {
+    /// Bound both in-flight requests and scheduled per-search materialization.
+    private static let maxConcurrentRequests = 8
+    private let requestLimiter = RequestConcurrencyLimiter(maximum: maxConcurrentRequests)
+
     private let token: String
     private let endpoint = URL(string: "https://api.github.com/graphql")!
     private let session: URLSession
@@ -63,11 +96,20 @@ final class GitHubClient: @unchecked Sendable {
         // Finish counting checks where the first page of 100 contexts was not all of them.
         var prs: [PullRequest] = []
         try await withThrowingTaskGroup(of: PullRequest?.self) { group in
-            for node in raw {
+            var nextIndex = 0
+            let initialCount = min(Self.maxConcurrentRequests, raw.count)
+            for _ in 0..<initialCount {
+                let node = raw[nextIndex]
+                nextIndex += 1
                 group.addTask { try await self.materialize(node) }
             }
-            for try await pr in group {
+            while let pr = try await group.next() {
                 if let pr { prs.append(pr) }
+                if nextIndex < raw.count {
+                    let node = raw[nextIndex]
+                    nextIndex += 1
+                    group.addTask { try await self.materialize(node) }
+                }
             }
         }
         return SearchResult(viewerLogin: viewer, pullRequests: prs)
@@ -126,7 +168,16 @@ final class GitHubClient: @unchecked Sendable {
         let cleanVars = variables.compactMapValues { $0 }
         request.httpBody = try JSONSerialization.data(withJSONObject: ["query": query, "variables": cleanVars])
 
-        let (data, response) = try await session.data(for: request)
+        await requestLimiter.acquire()
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            await requestLimiter.release()
+            throw error
+        }
+        await requestLimiter.release()
         guard let http = response as? HTTPURLResponse else { throw GitHubError.malformed }
         if http.statusCode == 401 { throw GitHubError.unauthorized }
         guard (200..<300).contains(http.statusCode) else {
