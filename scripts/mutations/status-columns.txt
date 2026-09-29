@@ -1,0 +1,4 @@
+Sources/pullbar/MenuColumns.swift@@s/filter \{ \$0 == 0 \|\| widths\[\$0\] > 0 \}/filter { _ in true }/@@empty status columns still take space
+Sources/pullbar/MenuColumns.swift@@s/max\(\(widths\.first \?\? 0\) \+ statusWidth, widestTitle\)/(widths.first ?? 0) + statusWidth/@@status block ignores wide titles
+Sources/pullbar/MenuColumns.swift@@s/            x \+= Self\.gap\n//@@no gap between columns
+Sources/pullbar/AppDelegate.swift@@s/\? NSAttributedString\(string: "⚠︎ conflicts"/? NSAttributedString(string: "conflicts"/@@conflict column loses its icon
